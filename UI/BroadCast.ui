@@ -1,0 +1,678 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>BroadCast</class>
+ <widget class="QMainWindow" name="BroadCast">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1049</width>
+    <height>727</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>OnePersonBroadcast</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color:&quot;black&quot;;
+color:&quot;white&quot;;</string>
+   </property>
+   <layout class="QGridLayout" name="gridLayout_3">
+    <item row="0" column="0">
+     <layout class="QGridLayout" name="gridLayout">
+      <property name="horizontalSpacing">
+       <number>6</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>0</number>
+      </property>
+      <item row="1" column="0">
+       <layout class="QHBoxLayout" name="main_layout">
+        <property name="spacing">
+         <number>3</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <layout class="QVBoxLayout" name="main1_layout">
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="main1_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;</string>
+            </property>
+            <property name="text">
+             <string>CH1</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="main1">
+            <property name="styleSheet">
+             <string notr="true">background-color:rgb(19, 10, 29);
+border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="main2_layout">
+          <item>
+           <widget class="QLabel" name="main2_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;</string>
+            </property>
+            <property name="text">
+             <string>CH2</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="main2">
+            <property name="styleSheet">
+             <string notr="true">background-color:rgb(19, 10, 29);
+border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item row="5" column="0">
+       <layout class="QGridLayout" name="ch_all_layout">
+        <property name="horizontalSpacing">
+         <number>10</number>
+        </property>
+        <property name="verticalSpacing">
+         <number>5</number>
+        </property>
+        <item row="0" column="0">
+         <layout class="QVBoxLayout" name="ch3_layout">
+          <item>
+           <widget class="QLabel" name="ch3_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;
+border-radius:&quot;25px&quot;;</string>
+            </property>
+            <property name="text">
+             <string>CH3</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ch3">
+            <property name="styleSheet">
+             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="3">
+         <layout class="QVBoxLayout" name="ch6_layout">
+          <item>
+           <widget class="QLabel" name="ch6_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;</string>
+            </property>
+            <property name="text">
+             <string>CH6</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ch6">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="3">
+         <layout class="QVBoxLayout" name="ch11_layout">
+          <item>
+           <widget class="QLabel" name="ch11_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;</string>
+            </property>
+            <property name="text">
+             <string>CH11</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ch11">
+            <property name="styleSheet">
+             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="2">
+         <layout class="QVBoxLayout" name="ch10_layout">
+          <item>
+           <widget class="QLabel" name="ch10_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;</string>
+            </property>
+            <property name="text">
+             <string>CH10</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ch10">
+            <property name="styleSheet">
+             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="4">
+         <layout class="QVBoxLayout" name="ch12_layout">
+          <item>
+           <widget class="QLabel" name="ch12_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;</string>
+            </property>
+            <property name="text">
+             <string>CH12</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ch12">
+            <property name="styleSheet">
+             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="0">
+         <layout class="QVBoxLayout" name="ch8_layout">
+          <item>
+           <widget class="QLabel" name="ch8_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;</string>
+            </property>
+            <property name="text">
+             <string>CH8</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ch8">
+            <property name="styleSheet">
+             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="2">
+         <layout class="QVBoxLayout" name="ch5_layout">
+          <item>
+           <widget class="QLabel" name="ch5_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;</string>
+            </property>
+            <property name="text">
+             <string>CH5</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ch5">
+            <property name="styleSheet">
+             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="4">
+         <layout class="QVBoxLayout" name="ch7_layout">
+          <item>
+           <widget class="QLabel" name="ch7_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;</string>
+            </property>
+            <property name="text">
+             <string>CH7</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ch7">
+            <property name="styleSheet">
+             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="1">
+         <layout class="QVBoxLayout" name="ch9_layout">
+          <item>
+           <widget class="QLabel" name="ch9_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;</string>
+            </property>
+            <property name="text">
+             <string>CH9</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ch9">
+            <property name="styleSheet">
+             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="1">
+         <layout class="QVBoxLayout" name="ch4_layout">
+          <item>
+           <widget class="QLabel" name="ch4_label">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color:#565656;
+color:#C8C6C4;</string>
+            </property>
+            <property name="text">
+             <string>CH4</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="ch4">
+            <property name="styleSheet">
+             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item row="2" column="0">
+       <layout class="QVBoxLayout" name="emptyLayout1">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="0" column="0">
+       <layout class="QVBoxLayout" name="emptyLayout2">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="3" column="0">
+       <layout class="QVBoxLayout" name="pip_label_layout" stretch="0">
+        <property name="bottomMargin">
+         <number>5</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="pip_label">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>20</height>
+           </size>
+          </property>
+          <property name="whatsThis">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color:rgb(55, 130, 221);
+color:&quot;white&quot;;
+border-radius:&quot;200px&quot;;</string>
+          </property>
+          <property name="text">
+           <string> PIP Screen</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1049</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuOptions">
+    <property name="title">
+     <string>Options</string>
+    </property>
+    <widget class="QMenu" name="menuSet_RTSP">
+     <property name="title">
+      <string>Set RTSP</string>
+     </property>
+     <addaction name="actionSet_first_RTSP"/>
+     <addaction name="actionSet_second_RTSP"/>
+    </widget>
+    <widget class="QMenu" name="menuSet_Channel">
+     <property name="title">
+      <string>Set Channel</string>
+     </property>
+     <addaction name="actionSelect_first_RTSP"/>
+     <addaction name="actionSelect_second_RTSP"/>
+    </widget>
+    <addaction name="menuSet_RTSP"/>
+    <addaction name="menuSet_Channel"/>
+   </widget>
+   <widget class="QMenu" name="menuRun">
+    <property name="title">
+     <string>Run</string>
+    </property>
+    <addaction name="actionRun_Frist_RTSP_Server"/>
+    <addaction name="actionRun_second_RTSP_Server"/>
+    <addaction name="actionRestart_All_Server"/>
+   </widget>
+   <widget class="QMenu" name="menuScreen">
+    <property name="title">
+     <string>Screen</string>
+    </property>
+    <addaction name="actionFull_Screen"/>
+    <addaction name="actionMax_size_Screen"/>
+    <addaction name="actionQuit_q"/>
+   </widget>
+   <addaction name="menuOptions"/>
+   <addaction name="menuRun"/>
+   <addaction name="menuScreen"/>
+  </widget>
+  <action name="actionSelect_first_RTSP">
+   <property name="text">
+    <string>Select First RTSP</string>
+   </property>
+  </action>
+  <action name="actionSelect_second_RTSP">
+   <property name="text">
+    <string>Select Second RTSP</string>
+   </property>
+  </action>
+  <action name="actionSet_first_RTSP">
+   <property name="text">
+    <string>Set first RTSP</string>
+   </property>
+  </action>
+  <action name="actionSet_second_RTSP">
+   <property name="text">
+    <string>Set second RTSP</string>
+   </property>
+  </action>
+  <action name="actionRun_Frist_RTSP_Server">
+   <property name="text">
+    <string>Run Frist RTSP Server</string>
+   </property>
+  </action>
+  <action name="actionRun_second_RTSP_Server">
+   <property name="text">
+    <string>Run second RTSP Server</string>
+   </property>
+  </action>
+  <action name="actionRestart_All_Server">
+   <property name="text">
+    <string>Restart All Server</string>
+   </property>
+  </action>
+  <action name="actionFull_Screen">
+   <property name="text">
+    <string>Full Screen (F11)</string>
+   </property>
+  </action>
+  <action name="actionMax_size_Screen">
+   <property name="text">
+    <string>Max size Screen (F11)</string>
+   </property>
+  </action>
+  <action name="actionQuit_q">
+   <property name="text">
+    <string>Quit (q)</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
