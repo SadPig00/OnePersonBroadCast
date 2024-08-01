@@ -17,12 +17,12 @@ from PyQt5.QtGui import *
 
 global ch_frame
 global opencv_key
-global monit_frame
 global crop_isSleep_thread
-crop_isSleep_thread= {'ch3':False,'ch4':False,'ch5':False,'ch6':False,'ch7':False,'ch8':False,'ch9':False,'ch10':False,'ch11':False,'ch12':False}
+global isClose
 ch_frame = [None,None]
 opencv_key = None
-monit_frame = None
+isClose = False
+
 
 # TODO : 좌표 알아내는 핸들러 (현재 미사용)
 def mouse_handler(event, x, y, flags, param):  # 마우스로 좌표 알아내기
@@ -57,6 +57,7 @@ class rtsp_worker(QThread):
                 ret, frame = cap.read()
 
                 if not ret:
+                    print(f"buffer error :: {e}")
                     continue
 
                 self.update_frame.emit(frame, self.name)
@@ -68,6 +69,7 @@ class rtsp_worker(QThread):
                 QMessageBox.about(self, "RTSP Connect Error", "First RTSP Server Not Connect")
             if self.name == 'second':
                 QMessageBox.about(self, "RTSP Connect Error", "Second RTSP Server Not Connect")
+            self.stop()
 
     def stop(self):
         self.working = False
@@ -127,23 +129,9 @@ class CropUpdateThread(QThread):
 
                 self.update_pixmap_signal.emit(frame,self.ch)
 
-                # TODO : 쓰레드 자원관리를 위해 ms 타임 걸어둠
-                QThread.msleep(300)
-                """
-                global crop_isSleep_thread
-                isAllWakeup = True
-                for i in crop_isSleep_thread.keys():
-                    if crop_isSleep_thread[i] == True:
-                        isAllWakeup = False
-                        break
-
-                if isAllWakeup:
-                    QThread.msleep(500)
-                    crop_isSleep_thread[self.ch] = True
-                if not isAllWakeup:
-                    QThread.msleep(1)
-                    crop_isSleep_thread[self.ch] = False
-                """
+                # TODO : 쓰레드 자원관리를 위해 ms 타임 걸어둠 ( 약 3프레임 )
+                QThread.msleep(333)
+                #QThread.msleep(1)
 
 
             except Exception as e :
@@ -156,6 +144,17 @@ class CropUpdateThread(QThread):
         self.wait(2000)
 
 form_class = uic.loadUiType('./UI/BroadCast.ui')[0]
+monit_class = uic.loadUiType('./UI/monit_widget.ui')[0]
+class MonitClass(QWidget,monit_class):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        self.monit_label.setGeometry(0,0,1280,720)
+        self.monit_label.setPixmap(QPixmap('./Assets/no-signal-icon-black.jpg'))
+        self.setGeometry(0,0,1280,720)
+        self.setFixedSize(self.width(),self.height())
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.show()
 
 class WindowClass(QMainWindow, form_class):
     def __init__(self):
@@ -235,18 +234,8 @@ class WindowClass(QMainWindow, form_class):
         self.actionSelect_first_RTSP.triggered.connect(lambda :self.getChannelSetting(rtsp_name="First RTSP"))
         self.actionSelect_second_RTSP.triggered.connect(lambda: self.getChannelSetting(rtsp_name="Second RTSP"))
 
-        # TODO : OBS (방송) 화면 송출한 서브 화면 표시 (opencv)
-
-        global opencv_key
-
-        image = np.zeros((1280, 720, 3), np.uint8)
-        cv2.namedWindow('display', cv2.WINDOW_NORMAL)
-        cv2.setWindowProperty('display', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        cv2.resizeWindow('display', 1280, 720)
-        cv2.imshow('display', image)
-        
-        opencv_key = cv2.waitKey(1)
-
+        # TODO : OBS (방송) 화면 송출한 서브 화면 표시 (widget)
+        self.monit_class = MonitClass()
 
     # TODO : RTSP 주소 받기
     def getRtsp(self,server_num):
@@ -336,6 +325,7 @@ class WindowClass(QMainWindow, form_class):
     def closeEvent(self, event):
         message = QMessageBox.question(self, "OnePersonBroadcast", "Are you sure you want to quit?")
         if message == QMessageBox.Yes:
+
             if self.rtsp_worker1 != None:
                 self.rtsp_worker1.stop()
                 self.rtsp_worker1.wait()
@@ -347,12 +337,16 @@ class WindowClass(QMainWindow, form_class):
                     self.crop_update_thread[ch].stop()
                     self.crop_update_thread[ch].wait()
 
+            self.monit_class.close()
             time.sleep(0.5)
             global ch_frame
+            global isClose
             for index in range(0, len(ch_frame)):
                 ch_frame[index] = None
+            isClose = True
             cv2.destroyAllWindows()
             event.accept()
+
         else:
             event.ignore()
 
@@ -360,7 +354,6 @@ class WindowClass(QMainWindow, form_class):
     def keyPressEvent(self, event):
         global ch_frame
         global opencv_key
-        global monit_frame
 
         if event.key() == Qt.Key_Q:
             self.close()
@@ -371,8 +364,20 @@ class WindowClass(QMainWindow, form_class):
             else:
                 self.showMaximized()
 
+        if event.key() == Qt.Key_F1:
+            self.getChannelSetting(rtsp_name="First RTSP")
+
+        if event.key() == Qt.Key_F2:
+            self.getChannelSetting(rtsp_name="Second RTSP")
+
+        if event.key() == Qt.Key_F5:
+            self.run_first_rtsp()
+
+        if event.key() == Qt.Key_F6:
+            self.run_second_rtsp()
+
         def handle_channel_key(channel, channel_rect):
-            global monit_frame
+            global isClose
             while channel_rect != None:
                 try:
                     for i in self.channel_list:
@@ -380,16 +385,18 @@ class WindowClass(QMainWindow, form_class):
                             i.setStyleSheet(self.selected_color)
                         else:
                             i.setStyleSheet(self.no_selected_color)
+
+                    if isClose:
+                        break
                     if channel_rect[4] == 'ch1':
-                        #cv2.imshow('display', self.qpixmapToOpencv(channel.pixmap()))
-                        cv2.imshow('display', self.qpixmapToOpencv(ch_frame[0])[channel_rect[1]:channel_rect[1]+channel_rect[3],channel_rect[0]:channel_rect[0]+channel_rect[2]])
-                        #monit_frame = self.qpixmapToOpencv(ch_frame[0])[channel_rect[1]:channel_rect[1]+channel_rect[3],channel_rect[0]:channel_rect[0]+channel_rect[2]]
+                        self.monit_class.monit_label.setPixmap(ch_frame[0].copy(channel_rect[0],channel_rect[1],channel_rect[2],channel_rect[3]).scaled(1280,720))
                     if channel_rect[4] == 'ch2':
-                        cv2.imshow('display',self.qpixmapToOpencv(ch_frame[1])[channel_rect[1]:channel_rect[1]+channel_rect[3], channel_rect[0]:channel_rect[0]+channel_rect[2]])
-                        #monit_frame = self.qpixmapToOpencv(ch_frame[1])[channel_rect[1]:channel_rect[1]+channel_rect[3], channel_rect[0]:channel_rect[0]+channel_rect[2]]
+                        self.monit_class.monit_label.setPixmap(ch_frame[1].copy(channel_rect[0], channel_rect[1], channel_rect[2], channel_rect[3]).scaled(1280,720))
+
                     opencv_key = cv2.waitKey(1)
                 except Exception as e:
-                    print(f"key press event error :: {e}")
+                    print(f"key handle event error :: {e}")
+
 
         key_map = {
             Qt.Key_1: (self.main1, self.ch_rect['ch1']),
@@ -464,7 +471,7 @@ class WindowClass(QMainWindow, form_class):
         x, y, w, h = geometry
         rect = QRect(x, y, w, h)
         painter.drawRect(rect)
-        painter.drawText(round((w)/2+x), round((h/2)+y) ,text)  # rect 위에 key 값을 글자로 씀
+        painter.drawText(round((w)/2+x-17), round((h/2)+y+5) ,text)  # rect 위에 key 값을 글자로 씀
 
         return pixmap_with_rects
 

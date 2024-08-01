@@ -31,8 +31,6 @@ class RSTP_dialog(QDialog, form_class):
         # QDialogButtonBox와 신호-슬롯 연결
         self.rtsp_button.accepted.connect(self.emit_rtsp_address)
         self.rtsp_button.rejected.connect(self.reject)
-
-
     def emit_rtsp_address(self):
         address = self.address_text.toPlainText()
         if self.server_num == "First RTSP":

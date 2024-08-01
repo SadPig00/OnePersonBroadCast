@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1049</width>
-    <height>727</height>
+    <width>671</width>
+    <height>494</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -46,6 +46,9 @@ color:&quot;white&quot;;</string>
         </property>
         <item>
          <layout class="QVBoxLayout" name="main1_layout">
+          <property name="spacing">
+           <number>6</number>
+          </property>
           <property name="topMargin">
            <number>0</number>
           </property>
@@ -577,7 +580,7 @@ border-radius:&quot;200px&quot;;</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1049</width>
+     <width>671</width>
      <height>21</height>
     </rect>
    </property>
@@ -624,12 +627,12 @@ border-radius:&quot;200px&quot;;</string>
   </widget>
   <action name="actionSelect_first_RTSP">
    <property name="text">
-    <string>Select First RTSP</string>
+    <string>Select First RTSP (F1)</string>
    </property>
   </action>
   <action name="actionSelect_second_RTSP">
    <property name="text">
-    <string>Select Second RTSP</string>
+    <string>Select Second RTSP (F2)</string>
    </property>
   </action>
   <action name="actionSet_first_RTSP">
@@ -644,12 +647,12 @@ border-radius:&quot;200px&quot;;</string>
   </action>
   <action name="actionRun_Frist_RTSP_Server">
    <property name="text">
-    <string>Run Frist RTSP Server</string>
+    <string>Run Frist RTSP Server (F5)</string>
    </property>
   </action>
   <action name="actionRun_second_RTSP_Server">
    <property name="text">
-    <string>Run second RTSP Server</string>
+    <string>Run second RTSP Server (F6)</string>
    </property>
   </action>
   <action name="actionRestart_All_Server">

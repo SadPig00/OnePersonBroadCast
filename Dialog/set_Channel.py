@@ -89,6 +89,9 @@ class Set_Channel_Dialog(QDialog, form_class):
             self.draw_rectangle(center_point)
     def emit_rectangle_signal(self):
         selected_ch = self.channelBox.currentText()
+
+        if self.rect_start_point == None:
+            return
         rect_point = [self.rect_start_point.x(),self.rect_start_point.y(),self.rect_width,self.rect_height]
         self.get_rectangle_signal.emit(selected_ch,self.rtsp_name,rect_point)
         self.accept()
