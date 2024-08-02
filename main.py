@@ -144,6 +144,7 @@ class CropUpdateThread(QThread):
         self.quit()
         self.wait(2000)
 
+# TODO : OBS( 방송화면 ) 출력용 모니터 스레드
 class MonitThread(QThread):
     update_monit_frame = pyqtSignal(QImage)
 
@@ -177,6 +178,8 @@ class MonitThread(QThread):
         self.wait(2000)
 form_class = uic.loadUiType('./UI/BroadCast.ui')[0]
 monit_class = uic.loadUiType('./UI/monit_widget.ui')[0]
+
+# TODO : OBS ( 방송출력 ) 화면 Class
 class MonitClass(QWidget,monit_class):
     def __init__(self):
         super().__init__()
@@ -188,6 +191,7 @@ class MonitClass(QWidget,monit_class):
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.show()
 
+# TODO : main 화면 Class
 class WindowClass(QMainWindow, form_class):
     def __init__(self):
         super().__init__()
@@ -354,6 +358,7 @@ class WindowClass(QMainWindow, form_class):
         except Exception as e:
             print(f"update_channel_pixmap function error :: {e}")
 
+    # TODO : 모니터 화면 업데이트 스레드 signal 받는 slot 함수
     @pyqtSlot(QImage)
     def update_monit_frame(self,qimage):
         pixmap = QPixmap.fromImage(qimage)
@@ -415,6 +420,7 @@ class WindowClass(QMainWindow, form_class):
         if event.key() == Qt.Key_F6:
             self.run_second_rtsp()
 
+        # TODO : OBS ( 화면출력 ) 변경시 Monit Thread에 데이터 전달
         def handle_channel_key(channel, channel_rect):
             #global isClose
             #while channel_rect != None:
@@ -528,6 +534,7 @@ class WindowClass(QMainWindow, form_class):
 
         return pixmap_with_rects
 
+    # TODO : main1, main2 화면에 출력 ( Rect ) signal 받는 slot 함수
     @pyqtSlot(np.ndarray, str)
     def update_frame(self, frame, name):
         global ch_frame
