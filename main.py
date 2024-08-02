@@ -16,12 +16,11 @@ from PyQt5.QtGui import *
 
 
 global ch_frame
-global opencv_key
-global crop_isSleep_thread
-global isClose
+#global opencv_key
+#global isClose
 ch_frame = [None,None]
-opencv_key = None
-isClose = False
+#opencv_key = None
+#isClose = False
 
 
 # TODO : 좌표 알아내는 핸들러 (현재 미사용)
@@ -61,6 +60,8 @@ class rtsp_worker(QThread):
                     continue
 
                 self.update_frame.emit(frame, self.name)
+                QThread.msleep(1)
+
 
             cap.release()
         except Exception as e:
@@ -143,6 +144,37 @@ class CropUpdateThread(QThread):
         self.quit()
         self.wait(2000)
 
+class MonitThread(QThread):
+    update_monit_frame = pyqtSignal(QImage)
+
+    def __init__(self,channel_rect,ch):
+        super().__init__()
+        self.working = True
+        self.channel_rect = channel_rect
+        self.ch = ch
+    def run(self):
+        global ch_frame
+
+        while self.working:
+
+            if self.ch == 'ch1':
+                frame = ch_frame[0].copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2], self.channel_rect[3]).scaled(1280, 720)
+            if self.ch == 'ch2':
+                frame = ch_frame[1].copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],self.channel_rect[3]).scaled(1280, 720)
+
+            frame = frame.toImage()
+
+            self.update_monit_frame.emit(frame)
+
+            QThread.msleep(1)
+    def change_channel_rect(self,channel_rect,ch):
+        self.channel_rect = channel_rect
+        self.ch = ch
+
+    def stop(self):
+        self.working = False
+        self.quit()
+        self.wait(2000)
 form_class = uic.loadUiType('./UI/BroadCast.ui')[0]
 monit_class = uic.loadUiType('./UI/monit_widget.ui')[0]
 class MonitClass(QWidget,monit_class):
@@ -236,7 +268,7 @@ class WindowClass(QMainWindow, form_class):
 
         # TODO : OBS (방송) 화면 송출한 서브 화면 표시 (widget)
         self.monit_class = MonitClass()
-
+        self.monit_thread = None
     # TODO : RTSP 주소 받기
     def getRtsp(self,server_num):
         dialog = rtsp_dialog.RSTP_dialog(server_num)
@@ -322,6 +354,11 @@ class WindowClass(QMainWindow, form_class):
         except Exception as e:
             print(f"update_channel_pixmap function error :: {e}")
 
+    @pyqtSlot(QImage)
+    def update_monit_frame(self,qimage):
+        pixmap = QPixmap.fromImage(qimage)
+        self.monit_class.monit_label.setPixmap(pixmap)
+
     def closeEvent(self, event):
         message = QMessageBox.question(self, "OnePersonBroadcast", "Are you sure you want to quit?")
         if message == QMessageBox.Yes:
@@ -338,12 +375,14 @@ class WindowClass(QMainWindow, form_class):
                     self.crop_update_thread[ch].wait()
 
             self.monit_class.close()
+            if self.monit_thread != None:
+                self.monit_thread.stop()
             time.sleep(0.5)
             global ch_frame
-            global isClose
+            #global isClose
             for index in range(0, len(ch_frame)):
                 ch_frame[index] = None
-            isClose = True
+            #isClose = True
             cv2.destroyAllWindows()
             event.accept()
 
@@ -353,7 +392,7 @@ class WindowClass(QMainWindow, form_class):
 
     def keyPressEvent(self, event):
         global ch_frame
-        global opencv_key
+        #global opencv_key
 
         if event.key() == Qt.Key_Q:
             self.close()
@@ -377,8 +416,9 @@ class WindowClass(QMainWindow, form_class):
             self.run_second_rtsp()
 
         def handle_channel_key(channel, channel_rect):
-            global isClose
-            while channel_rect != None:
+            #global isClose
+            #while channel_rect != None:
+            if channel_rect != None:
                 try:
                     for i in self.channel_list:
                         if i == channel:
@@ -386,14 +426,27 @@ class WindowClass(QMainWindow, form_class):
                         else:
                             i.setStyleSheet(self.no_selected_color)
 
-                    if isClose:
-                        break
+                    #if isClose:
+                    #    break
                     if channel_rect[4] == 'ch1':
-                        self.monit_class.monit_label.setPixmap(ch_frame[0].copy(channel_rect[0],channel_rect[1],channel_rect[2],channel_rect[3]).scaled(1280,720))
-                    if channel_rect[4] == 'ch2':
-                        self.monit_class.monit_label.setPixmap(ch_frame[1].copy(channel_rect[0], channel_rect[1], channel_rect[2], channel_rect[3]).scaled(1280,720))
+                        if self.monit_thread == None:
+                            self.monit_thread = MonitThread(channel_rect=channel_rect,ch='ch1')
+                            self.monit_thread.update_monit_frame.connect(self.update_monit_frame)
+                            self.monit_thread.start()
+                        if self.monit_thread != None:
+                            self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='ch1')
+                        #self.monit_class.monit_label.setPixmap(ch_frame[0].copy(channel_rect[0],channel_rect[1],channel_rect[2],channel_rect[3]).scaled(1280,720))
 
-                    opencv_key = cv2.waitKey(1)
+                    if channel_rect[4] == 'ch2':
+                        if self.monit_thread == None:
+                            self.monit_thread = MonitThread(channel_rect=channel_rect, ch='ch2')
+                            self.monit_thread.update_monit_frame.connect(self.update_monit_frame)
+                            self.monit_thread.start()
+                        if self.monit_thread != None:
+                            self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='ch2')
+                        #self.monit_class.monit_label.setPixmap(ch_frame[1].copy(channel_rect[0], channel_rect[1], channel_rect[2], channel_rect[3]).scaled(1280,720))
+
+                    #opencv_key = cv2.waitKey(1)
                 except Exception as e:
                     print(f"key handle event error :: {e}")
 

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>671</width>
-    <height>494</height>
+    <width>771</width>
+    <height>604</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -41,17 +41,14 @@ color:&quot;white&quot;;</string>
         <property name="spacing">
          <number>3</number>
         </property>
+        <property name="sizeConstraint">
+         <enum>QLayout::SetDefaultConstraint</enum>
+        </property>
         <property name="rightMargin">
          <number>0</number>
         </property>
         <item>
          <layout class="QVBoxLayout" name="main1_layout">
-          <property name="spacing">
-           <number>6</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
           <item>
            <widget class="QLabel" name="main1_label">
             <property name="minimumSize">
@@ -525,6 +522,9 @@ color:#C8C6C4;</string>
           <property name="text">
            <string/>
           </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
          </widget>
         </item>
        </layout>
@@ -538,6 +538,9 @@ color:#C8C6C4;</string>
          <widget class="QLabel" name="label_2">
           <property name="text">
            <string/>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
           </property>
          </widget>
         </item>
@@ -567,6 +570,9 @@ border-radius:&quot;200px&quot;;</string>
           <property name="text">
            <string> PIP Screen</string>
           </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
          </widget>
         </item>
        </layout>
@@ -580,7 +586,7 @@ border-radius:&quot;200px&quot;;</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>671</width>
+     <width>771</width>
      <height>21</height>
     </rect>
    </property>
@@ -611,7 +617,6 @@ border-radius:&quot;200px&quot;;</string>
     </property>
     <addaction name="actionRun_Frist_RTSP_Server"/>
     <addaction name="actionRun_second_RTSP_Server"/>
-    <addaction name="actionRestart_All_Server"/>
    </widget>
    <widget class="QMenu" name="menuScreen">
     <property name="title">
