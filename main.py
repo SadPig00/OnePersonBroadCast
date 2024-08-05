@@ -40,7 +40,7 @@ def mouse_handler(event, x, y, flags, param):  # 마우스로 좌표 알아내�
 
 # TODO : RTSP 서버 연결 스레드
 class rtsp_worker(QThread):
-    update_frame = pyqtSignal(np.ndarray, str)  # 프레임 업데이트 시그널
+    update_frame = pyqtSignal(np.ndarray, str,int)  # 프레임 업데이트 시그널
 
     def __init__(self, parent, url, name):
         super().__init__(parent)
@@ -53,6 +53,7 @@ class rtsp_worker(QThread):
         try:
             cap = cv2.VideoCapture(self.url)
             frame_count = 0
+            crop_frame_count = 1
             while cap.isOpened() and self.working:
                 ret, frame = cap.read()
 
@@ -63,8 +64,10 @@ class rtsp_worker(QThread):
                         cap = cv2.VideoCapture(self.url)
                         frame_count = 0
                     continue
-
-                self.update_frame.emit(frame, self.name)
+                crop_frame_count += 1
+                if crop_frame_count == 31:
+                    crop_frame_count = 0
+                self.update_frame.emit(frame, self.name,crop_frame_count)
                 QThread.msleep(1)
 
 
@@ -535,7 +538,7 @@ class WindowClass(QMainWindow, form_class):
                 self.rtsp_worker2 = None
 
 
-    def draw_crop_rect(self,frame,geometry,text):
+    def draw_crop_rect(self,frame,geometry,text,ch):
 
         # TODO: 해당 rect는 원본 비율의 x, y, w, h
         pixmap_with_rects = frame
@@ -551,16 +554,17 @@ class WindowClass(QMainWindow, form_class):
         painter.setFont(font)
 
         x, y, w, h = geometry
-        rect = QRect(x, y, w, h)
-        painter.drawRect(rect)
+        if ch != 'ch1' and ch != 'ch2':
+            rect = QRect(x, y, w, h)
+            painter.drawRect(rect)
         #painter.drawText(QRect(round((w)/2+x-17), round((h/2)+y+5),80,80),Qt.AlignCenter|Qt.TextWordWrap ,text+"\n이야야야야야")  # rect 위에 key 값을 글자로 씀
         painter.drawText(QRect(x+10,y+10,w,h),Qt.TextWordWrap, text)  # rect 위에 key 값을 글자로 씀
 
         return pixmap_with_rects
 
     # TODO : main1, main2 화면에 출력 ( Rect ) signal 받는 slot 함수
-    @pyqtSlot(np.ndarray, str)
-    def update_frame(self, frame, name):
+    @pyqtSlot(np.ndarray, str, int)
+    def update_frame(self, frame, name, crop_frame_count):
         global ch_frame
 
         h, w, c = frame.shape
@@ -575,7 +579,7 @@ class WindowClass(QMainWindow, form_class):
 
             for i in self.ch_rect.keys():
                 try:
-                    if i == 'ch1' or i == 'ch2':
+                    if i == 'ch2':
                         continue
                     if self.ch_rect[i] != None and self.ch_rect[i][4] == 'ch1':
                         x,y,w,h = self.ch_rect[i][:4]
@@ -585,8 +589,9 @@ class WindowClass(QMainWindow, form_class):
                         y = round(y*height_rate)
                         w = round(w*witdh_rate)
                         h = round(h*height_rate)
-                        main_frame = self.draw_crop_rect(frame=main_frame,geometry=(x,y,w,h),text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}').copy()
-
+                        main_frame = self.draw_crop_rect(frame=main_frame,geometry=(x,y,w,h),text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i).copy()
+                        if crop_frame_count % 15 != 0:
+                            continue
                         if i == 'ch3':
                             self.ch3.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
                         elif i == 'ch4':
@@ -611,9 +616,9 @@ class WindowClass(QMainWindow, form_class):
                 except Exception as e:
                     print(f"draw_rect_errorr :: {e}")
                     continue
-
-            #self.main1.setPixmap(main_frame.scaled(self.main_screen_width, self.main_screen_height))
             self.main1.setPixmap(main_frame)
+            #self.main1.setPixmap(main_frame.scaled(self.main_screen_width, self.main_screen_height))
+
 
 
         if name == 'second':
@@ -624,7 +629,7 @@ class WindowClass(QMainWindow, form_class):
 
             for i in self.ch_rect.keys():
                 try:
-                    if i == 'ch1' or i == 'ch2':
+                    if i == 'ch1':
                         continue
                     if self.ch_rect[i] != None and self.ch_rect[i][4] == 'ch2':
                         x, y, w, h = self.ch_rect[i][:4]
@@ -634,8 +639,9 @@ class WindowClass(QMainWindow, form_class):
                         y = round(y * height_rate)
                         w = round(w * witdh_rate)
                         h = round(h * height_rate)
-                        main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h), text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}').copy()
-
+                        main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h), text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i).copy()
+                        if crop_frame_count % 15 != 0:
+                            continue
                         if i == 'ch3':
                             self.ch3.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
                         elif i == 'ch4':
@@ -660,9 +666,9 @@ class WindowClass(QMainWindow, form_class):
                 except Exception as e:
                     print(f"draw_rect_errorr :: {e}")
                     continue
-
-            #self.main2.setPixmap(main_frame.scaled(self.main_screen_width, self.main_screen_height))
             self.main2.setPixmap(main_frame)
+            #self.main2.setPixmap(main_frame.scaled(self.main_screen_width, self.main_screen_height))
+
 
 
 
