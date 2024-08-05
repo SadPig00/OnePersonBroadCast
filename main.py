@@ -52,11 +52,16 @@ class rtsp_worker(QThread):
     def run(self):
         try:
             cap = cv2.VideoCapture(self.url)
+            frame_count = 0
             while cap.isOpened() and self.working:
                 ret, frame = cap.read()
 
                 if not ret:
-                    print(f"buffer error :: {e}")
+                    # TODO : 인터넷 속도 문제로 RTSP 서버 끊겼을시 재접속
+                    frame_count += 1
+                    if frame_count == 1000:
+                        cap = cv2.VideoCapture(self.url)
+                        frame_count = 0
                     continue
 
                 self.update_frame.emit(frame, self.name)
@@ -65,7 +70,7 @@ class rtsp_worker(QThread):
 
             cap.release()
         except Exception as e:
-            print(f"RSTP Server Run Error :: {e}")
+            print(f"RTSP Server Run Error :: {e}")
             if self.name == 'first':
                 QMessageBox.about(self, "RTSP Connect Error", "First RTSP Server Not Connect")
             if self.name == 'second':
@@ -176,6 +181,8 @@ class MonitThread(QThread):
         self.working = False
         self.quit()
         self.wait(2000)
+
+
 form_class = uic.loadUiType('./UI/BroadCast.ui')[0]
 monit_class = uic.loadUiType('./UI/monit_widget.ui')[0]
 
@@ -198,6 +205,7 @@ class WindowClass(QMainWindow, form_class):
         self.window_width = tkinter.Tk().winfo_screenwidth()
         self.window_height = tkinter.Tk().winfo_screenheight()
         self.setupUi(self)
+        self.resize(round(self.window_width*0.9), round(self.window_height*0.9))
 
         # TODO : selected color :: rgb(253, 8, 8) // no selected color :: rgb(190, 190, 190);
         self.selected_color="border : 2px solid rgb(253,8,8)"
@@ -207,7 +215,7 @@ class WindowClass(QMainWindow, form_class):
         # TODO : 영상 화면 비율 16:9
         self.rate = 16 / 9
 
-        # TODO : 초기 RSTP 서버 초기값 None
+        # TODO : 초기 RTSP 서버 초기값 None
         self.first_rtsp = Config.config['RTSP']['first_rtsp']
         self.second_rtsp = Config.config['RTSP']['second_rtsp']
 
@@ -219,8 +227,9 @@ class WindowClass(QMainWindow, form_class):
         noSignalImage = QPixmap('./Assets/no-signal-icon-black.jpg')
 
         # TODO : 이미지 사이즈 사용자의 모니터 사이즈에 맞춰 16:9 비율로 설정
-        #self.main_screen_width = round(self.window_width / 2)
-        self.main_screen_width = round(self.window_width / 2.15)
+        #self.main_screen_width = round(self.window_width / 2.15)
+
+        self.main_screen_width = round(self.width() / 2)
         self.main_screen_height = round(self.main_screen_width / self.rate)
 
         # TODO : main rtsp 채널 초기 이미지 셋팅
@@ -275,7 +284,7 @@ class WindowClass(QMainWindow, form_class):
         self.monit_thread = None
     # TODO : RTSP 주소 받기
     def getRtsp(self,server_num):
-        dialog = rtsp_dialog.RSTP_dialog(server_num)
+        dialog = rtsp_dialog.RTSP_dialog(server_num)
         if server_num == 'First RTSP':
             self.server_num = server_num
             dialog.rtsp_address_signal.connect(self.setRtsp)
@@ -315,7 +324,20 @@ class WindowClass(QMainWindow, form_class):
 
     # TODO : CH 셋팅에서 전달받은 값.. ch1, ch2 ... // First RTSP, Second RTSP // [left_top_x,left_top_y,width,height]
     def setChannelRect(self, ch, rtsp_name, rect_point):
+        global ch_frame
+        ##########################################
 
+        crop_x, crop_y, crop_width, crop_height = rect_point
+        width_rate = self.ch_rect['ch1'][2] / self.main_screen_width
+        height_rate = self.ch_rect['ch1'][3] / self.main_screen_height
+
+        if rtsp_name == 'First RTSP' and ch_frame[0] != None:
+            self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate),'ch1']
+        if rtsp_name == 'Second RTSP' and ch_frame[0] != None:
+            self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate), 'ch2']
+
+        ##########################################
+        """
         for i in self.crop_update_thread.keys():
             if i == ch and self.crop_update_thread[i] != None:
                 self.crop_update_thread[i].stop()
@@ -325,7 +347,7 @@ class WindowClass(QMainWindow, form_class):
         self.crop_update_thread[ch].update_pixmap_signal.connect(self.update_channel_pixmap)
 
         self.crop_update_thread[ch].start()
-
+        """
 
     # TODO : crop 이미지 출력을 위한 slot
     @pyqtSlot(QImage, str)
@@ -374,11 +396,12 @@ class WindowClass(QMainWindow, form_class):
             if self.rtsp_worker2 != None:
                 self.rtsp_worker2.stop()
                 self.rtsp_worker2.wait()
+            """
             for ch in self.crop_update_thread.keys():
                 if self.crop_update_thread[ch] != None:
                     self.crop_update_thread[ch].stop()
                     self.crop_update_thread[ch].wait()
-
+            """
             self.monit_class.close()
             if self.monit_thread != None:
                 self.monit_thread.stop()
@@ -530,7 +553,8 @@ class WindowClass(QMainWindow, form_class):
         x, y, w, h = geometry
         rect = QRect(x, y, w, h)
         painter.drawRect(rect)
-        painter.drawText(round((w)/2+x-17), round((h/2)+y+5) ,text)  # rect 위에 key 값을 글자로 씀
+        #painter.drawText(QRect(round((w)/2+x-17), round((h/2)+y+5),80,80),Qt.AlignCenter|Qt.TextWordWrap ,text+"\n이야야야야야")  # rect 위에 key 값을 글자로 씀
+        painter.drawText(QRect(x+10,y+10,w,h),Qt.TextWordWrap, text)  # rect 위에 key 값을 글자로 씀
 
         return pixmap_with_rects
 
@@ -546,7 +570,7 @@ class WindowClass(QMainWindow, form_class):
         if name == 'first':
             ch_frame[0] = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
-
+            crop_frame = main_frame.copy()
             self.ch_rect['ch1'] = [0, 0, w, h,'ch1']
 
             for i in self.ch_rect.keys():
@@ -561,12 +585,32 @@ class WindowClass(QMainWindow, form_class):
                         y = round(y*height_rate)
                         w = round(w*witdh_rate)
                         h = round(h*height_rate)
-                        main_frame = self.draw_crop_rect(frame=main_frame,geometry=(x,y,w,h),text=i).copy()
-                        
+                        main_frame = self.draw_crop_rect(frame=main_frame,geometry=(x,y,w,h),text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}').copy()
+
+                        if i == 'ch3':
+                            self.ch3.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch4':
+                            self.ch4.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch5':
+                            self.ch5.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch6':
+                            self.ch6.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch7':
+                            self.ch7.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch8':
+                            self.ch8.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch9':
+                            self.ch9.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch10':
+                            self.ch10.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch11':
+                            self.ch11.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch12':
+                            self.ch12.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+
                 except Exception as e:
                     print(f"draw_rect_errorr :: {e}")
                     continue
-
 
             #self.main1.setPixmap(main_frame.scaled(self.main_screen_width, self.main_screen_height))
             self.main1.setPixmap(main_frame)
@@ -575,6 +619,7 @@ class WindowClass(QMainWindow, form_class):
         if name == 'second':
             ch_frame[1] = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
+            crop_frame = main_frame.copy()
             self.ch_rect['ch2'] = [0, 0, w, h,'ch2']
 
             for i in self.ch_rect.keys():
@@ -589,7 +634,28 @@ class WindowClass(QMainWindow, form_class):
                         y = round(y * height_rate)
                         w = round(w * witdh_rate)
                         h = round(h * height_rate)
-                        main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h), text=i).copy()
+                        main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h), text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}').copy()
+
+                        if i == 'ch3':
+                            self.ch3.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch4':
+                            self.ch4.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch5':
+                            self.ch5.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch6':
+                            self.ch6.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch7':
+                            self.ch7.setPixmap(crop_frame.copy(round(self.ch_rect[i][0] * witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2] * witdh_rate),round(self.ch_rect[i][3] * height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch8':
+                            self.ch8.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch9':
+                            self.ch9.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch10':
+                            self.ch10.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch11':
+                            self.ch11.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        elif i == 'ch12':
+                            self.ch12.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
 
                 except Exception as e:
                     print(f"draw_rect_errorr :: {e}")
@@ -599,22 +665,6 @@ class WindowClass(QMainWindow, form_class):
             self.main2.setPixmap(main_frame)
 
 
-
-    def qpixmapToOpencv(self,qpixmap):
-        # QPixmap을 QImage로 변환
-        qimage = qpixmap.toImage()
-        qimage = qimage.convertToFormat(QImage.Format.Format_RGBA8888)
-
-        # QImage의 버퍼를 NumPy 배열로 변환
-        width = qimage.width()
-        height = qimage.height()
-        ptr = qimage.bits()
-        ptr.setsize(qimage.byteCount())
-        arr = np.array(ptr).reshape(height, width, 4)  # RGBA 형식의 4채널 이미지
-
-        # OpenCV에서 사용할 수 있도록 BGR 형식으로 변환
-        cv_img = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGRA)
-        return cv_img
 
 if __name__ == "__main__":
     try:

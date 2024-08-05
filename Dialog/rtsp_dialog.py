@@ -9,7 +9,7 @@ import sys, os
 
 form_class = uic.loadUiType('./UI/RTSP_Address.ui')[0]
 
-class RSTP_dialog(QDialog, form_class):
+class RTSP_dialog(QDialog, form_class):
     rtsp_address_signal = pyqtSignal(str)  # 커스텀 시그널 정의
 
     def __init__(self,server_num):

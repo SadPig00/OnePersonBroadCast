@@ -27,9 +27,12 @@ class Set_Channel_Dialog(QDialog, form_class):
         self.original_pixmap = frame.copy()
         self.rtsp_image.setPixmap(self.original_pixmap)
 
+
         self.rect_start_point = None
-        self.rect_width = self.frame_width // 8
-        self.rect_height = int(self.rect_width / (16 / 9))
+
+        self.rect_width = round(self.frame_width // 8)
+        self.rect_height = round(self.rect_width / (16 / 9))
+
 
         self.rtsp_image.mousePressEvent = self.mousePressEvent
         self.rtsp_image.wheelEvent = self.wheelEvent
@@ -76,16 +79,17 @@ class Set_Channel_Dialog(QDialog, form_class):
 
     def wheelEvent(self, event):
         delta = event.angleDelta().y() // 120  # Typical wheel step is 120
-        change = delta * 10
-        new_width = self.rect_width + change
-        new_height = int(new_width / (16 / 9))
+        change_w = delta * 16
+        change_h = delta * 9
+        new_width = self.rect_width + change_w
+        new_height = self.rect_height + change_h
 
         if new_width > 0 and new_height > 0 and new_width <= self.frame_width and new_height <= self.frame_height:
             self.rect_width = new_width
             self.rect_height = new_height
 
         if self.rect_start_point:
-            center_point = self.rect_start_point + QPoint(self.rect_width // 2, self.rect_height // 2)
+            center_point = self.rect_start_point + QPoint(round(self.rect_width // 2), round(self.rect_height // 2))
             self.draw_rectangle(center_point)
     def emit_rectangle_signal(self):
         selected_ch = self.channelBox.currentText()
