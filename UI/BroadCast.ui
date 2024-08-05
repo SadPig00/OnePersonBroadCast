@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>771</width>
-    <height>604</height>
+    <width>1280</width>
+    <height>720</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -36,7 +36,7 @@ color:&quot;white&quot;;</string>
       <property name="verticalSpacing">
        <number>0</number>
       </property>
-      <item row="1" column="0">
+      <item row="0" column="0">
        <layout class="QHBoxLayout" name="main_layout">
         <property name="spacing">
          <number>3</number>
@@ -125,7 +125,7 @@ border : 2px solid rgb(190, 190, 190);</string>
         </item>
        </layout>
       </item>
-      <item row="5" column="0">
+      <item row="4" column="0">
        <layout class="QGridLayout" name="ch_all_layout">
         <property name="horizontalSpacing">
          <number>10</number>
@@ -513,40 +513,6 @@ color:#C8C6C4;</string>
        </layout>
       </item>
       <item row="2" column="0">
-       <layout class="QVBoxLayout" name="emptyLayout1">
-        <property name="spacing">
-         <number>0</number>
-        </property>
-        <item>
-         <widget class="QLabel" name="label">
-          <property name="text">
-           <string/>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignCenter</set>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="0" column="0">
-       <layout class="QVBoxLayout" name="emptyLayout2">
-        <property name="spacing">
-         <number>0</number>
-        </property>
-        <item>
-         <widget class="QLabel" name="label_2">
-          <property name="text">
-           <string/>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignCenter</set>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="3" column="0">
        <layout class="QVBoxLayout" name="pip_label_layout" stretch="0">
         <property name="bottomMargin">
          <number>5</number>
@@ -577,6 +543,23 @@ border-radius:&quot;200px&quot;;</string>
         </item>
        </layout>
       </item>
+      <item row="1" column="0">
+       <layout class="QVBoxLayout" name="emptyLayout1">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string/>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
      </layout>
     </item>
    </layout>
@@ -586,7 +569,7 @@ border-radius:&quot;200px&quot;;</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>771</width>
+     <width>1280</width>
      <height>21</height>
     </rect>
    </property>

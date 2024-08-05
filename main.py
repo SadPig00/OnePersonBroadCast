@@ -63,6 +63,7 @@ class rtsp_worker(QThread):
                     if frame_count == 1000:
                         cap = cv2.VideoCapture(self.url)
                         frame_count = 0
+                        crop_frame_count = 0
                     continue
                 crop_frame_count += 1
                 if crop_frame_count == 31:
@@ -230,9 +231,11 @@ class WindowClass(QMainWindow, form_class):
         noSignalImage = QPixmap('./Assets/no-signal-icon-black.jpg')
 
         # TODO : 이미지 사이즈 사용자의 모니터 사이즈에 맞춰 16:9 비율로 설정
-        #self.main_screen_width = round(self.window_width / 2.15)
-
-        self.main_screen_width = round(self.width() / 2)
+        if int(Config.config['RTSP']['rtsp_num']) == 2 :
+            self.main_screen_width = round(self.window_width / 2.15)
+        if int(Config.config['RTSP']['rtsp_num']) == 3:
+            self.main_screen_width = round(self.window_width / 3.15)
+        #self.main_screen_width = round(self.width() / 2)
         self.main_screen_height = round(self.main_screen_width / self.rate)
 
         # TODO : main rtsp 채널 초기 이미지 셋팅
@@ -241,7 +244,7 @@ class WindowClass(QMainWindow, form_class):
         self.main2.setPixmap(main_noSignalImage)
 
         #self.sub_screen_width = round(self.main_screen_width / 2)
-        self.sub_screen_width = round(self.main_screen_width / 2.5)
+        self.sub_screen_width = round(self.window_width / 5.5)
         self.sub_screen_height = round(self.sub_screen_width / self.rate)
         sub_noSignalImage = noSignalImage.scaled(self.sub_screen_width, self.sub_screen_height)
 
@@ -331,8 +334,10 @@ class WindowClass(QMainWindow, form_class):
         ##########################################
 
         crop_x, crop_y, crop_width, crop_height = rect_point
-        width_rate = self.ch_rect['ch1'][2] / self.main_screen_width
-        height_rate = self.ch_rect['ch1'][3] / self.main_screen_height
+        #width_rate = self.ch_rect['ch1'][2] / self.main_screen_width
+        #height_rate = self.ch_rect['ch1'][3] / self.main_screen_height
+        width_rate = self.ch_rect['ch1'][2] / 1280
+        height_rate = self.ch_rect['ch1'][3] / 720
 
         if rtsp_name == 'First RTSP' and ch_frame[0] != None:
             self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate),'ch1']

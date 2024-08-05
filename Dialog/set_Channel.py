@@ -9,7 +9,7 @@ form_class = uic.loadUiType('./UI/Set_Channel.ui')[0]
 
 class Set_Channel_Dialog(QDialog, form_class):
     # TODO : main UI에 좌표를 전달하는 signal
-    get_rectangle_signal = pyqtSignal(str,str,list)
+    get_rectangle_signal = pyqtSignal(str, str, list)
 
     def __init__(self, frame, rtsp_name):
         super().__init__()
@@ -17,22 +17,19 @@ class Set_Channel_Dialog(QDialog, form_class):
         self.frame = frame
         self.rtsp_name = rtsp_name
         self.setWindowTitle(self.rtsp_name)
-        """
-        self.frame = cv2.resize(self.frame, (1280, 720))
-        self.frame_height, self.frame_width, self.channels = self.frame.shape
-        """
+
+        self.frame = self.frame.scaled(1280, 720)
+
         self.frame_height = self.frame.height()
         self.frame_width = self.frame.width()
 
-        self.original_pixmap = frame.copy()
+        self.original_pixmap = self.frame.copy()
         self.rtsp_image.setPixmap(self.original_pixmap)
-
 
         self.rect_start_point = None
 
-        self.rect_width = round(self.frame_width // 8)
+        self.rect_width = self.frame_width // 8
         self.rect_height = round(self.rect_width / (16 / 9))
-
 
         self.rtsp_image.mousePressEvent = self.mousePressEvent
         self.rtsp_image.wheelEvent = self.wheelEvent
@@ -88,14 +85,18 @@ class Set_Channel_Dialog(QDialog, form_class):
             self.rect_width = new_width
             self.rect_height = new_height
 
-        if self.rect_start_point:
-            center_point = self.rect_start_point + QPoint(round(self.rect_width // 2), round(self.rect_height // 2))
-            self.draw_rectangle(center_point)
+        if self.rect_start_point is None:
+            center_point = QPoint(self.frame_width // 2, self.frame_height // 2)
+        else:
+            center_point = self.rect_start_point + QPoint(self.rect_width // 2, self.rect_height // 2)
+
+        self.draw_rectangle(center_point)
+
     def emit_rectangle_signal(self):
         selected_ch = self.channelBox.currentText()
 
-        if self.rect_start_point == None:
+        if self.rect_start_point is None:
             return
-        rect_point = [self.rect_start_point.x(),self.rect_start_point.y(),self.rect_width,self.rect_height]
-        self.get_rectangle_signal.emit(selected_ch,self.rtsp_name,rect_point)
+        rect_point = [self.rect_start_point.x(), self.rect_start_point.y(), self.rect_width, self.rect_height]
+        self.get_rectangle_signal.emit(selected_ch, self.rtsp_name, rect_point)
         self.accept()
