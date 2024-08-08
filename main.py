@@ -96,7 +96,7 @@ class rtsp_worker(QThread):
                     crop_frame_count = 1
 
                 self.update_frame.emit(frame, self.name,crop_frame_count)
-                QThread.msleep(1)
+                #QThread.msleep(1)
 
 
             cap.release()
@@ -753,7 +753,8 @@ class WindowClass(QMainWindow, form_class):
             if self.first_rtsp != None:
                 if self.rtsp_worker1 != None:
                     self.rtsp_worker1.stop()
-                self.rtsp_worker1 = rtsp_worker(self, url=self.first_rtsp,name="first")
+                #self.rtsp_worker1 = rtsp_worker(self, url=self.first_rtsp,name="first")
+                self.rtsp_worker1 = rtsp_worker(self, url='D:\\ABS영상용\\20240610_133817\\240610_GBSA-01.mp4', name="first")
                 self.rtsp_worker1.update_frame.connect(self.update_frame)
 
                 self.rtsp_worker1.start()

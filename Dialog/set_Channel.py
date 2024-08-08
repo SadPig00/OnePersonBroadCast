@@ -28,8 +28,8 @@ class Set_Channel_Dialog(QDialog, form_class):
 
         self.frame_height = self.frame.height()
         self.frame_width = self.frame.width()
-
-        self.origin_width_rate = round(origin_width/self.frame_width)
+        self.origin_width = origin_width
+        self.origin_width_rate = self.origin_width/self.frame_width
 
         self.resize(self.frame_width,self.frame_height)
 
@@ -56,8 +56,8 @@ class Set_Channel_Dialog(QDialog, form_class):
         bottom_right = QPoint(center_point.x() + half_width, center_point.y() + half_height)
 
         if self.forceSize and self.frame_width >= 1280:
-            self.rect_width = 640
-            self.rect_height = 360
+            self.rect_width = round(1280* (self.frame_width/self.origin_width))
+            self.rect_height = round(720*(self.frame_width/self.origin_width))
             half_width = round(self.rect_width / 2)
             half_height = round(self.rect_height / 2)
             top_left = QPoint(center_point.x() - half_width, center_point.y() - half_height)
@@ -91,7 +91,7 @@ class Set_Channel_Dialog(QDialog, form_class):
         font.setBold(True)
         font.setPointSize(15)
         painter.setFont(font)
-        painter.drawText(QRect(self.rect_start_point.x() + 10, self.rect_start_point.y() + 10, self.rect_width,self.rect_height), Qt.TextWordWrap,f'{self.rect_width * self.origin_width_rate} x {self.rect_height * self.origin_width_rate}')  # rect 위에 key 값을 글자로 씀
+        painter.drawText(QRect(self.rect_start_point.x() + 10, self.rect_start_point.y() + 10, self.rect_width,self.rect_height), Qt.TextWordWrap,f'{round(self.rect_width * self.origin_width_rate)} x {round(self.rect_height * self.origin_width_rate)}')  # rect 위에 key 값을 글자로 씀
         painter.end()
 
         self.rtsp_image.setPixmap(self.pixmap)
@@ -114,6 +114,7 @@ class Set_Channel_Dialog(QDialog, form_class):
             delta = event.angleDelta().y() // 120  # Typical wheel step is 120
             change_w = delta * 16
             change_h = delta * 9
+
             new_width = self.rect_width + change_w
             new_height = self.rect_height + change_h
 
@@ -127,6 +128,7 @@ class Set_Channel_Dialog(QDialog, form_class):
                 center_point = self.rect_start_point + QPoint(self.rect_width // 2, self.rect_height // 2)
 
             self.draw_rectangle(center_point)
+        event.accept()
 
     def emit_rectangle_signal(self):
         selected_ch = self.channelBox.currentText()
