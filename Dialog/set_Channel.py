@@ -3,9 +3,14 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import cv2
-import sys
+import sys,os
+import Config
+isExe = Config.config['PROGRAM']['isExe'] == 'true'
 
-form_class = uic.loadUiType('./UI/Set_Channel.ui')[0]
+if isExe:
+    form_class = uic.loadUiType(f"{os.path.dirname(__file__)}\\UI\\Set_Channel.ui")[0]
+if not isExe:
+    form_class = uic.loadUiType('./UI/Set_Channel.ui')[0]
 
 class Set_Channel_Dialog(QDialog, form_class):
     # TODO : main UI에 좌표를 전달하는 signal
@@ -14,22 +19,25 @@ class Set_Channel_Dialog(QDialog, form_class):
     def __init__(self, frame, rtsp_name):
         super().__init__()
         self.setupUi(self)
+
         self.frame = frame
         self.rtsp_name = rtsp_name
         self.setWindowTitle(self.rtsp_name)
-
-        self.frame = self.frame.scaled(1280, 720)
+        self.forceSize = False
+        self.forceSize_radio.clicked.connect(self.select_froceSize)
 
         self.frame_height = self.frame.height()
         self.frame_width = self.frame.width()
+
+        self.resize(self.frame_width,self.frame_height)
 
         self.original_pixmap = self.frame.copy()
         self.rtsp_image.setPixmap(self.original_pixmap)
 
         self.rect_start_point = None
 
-        self.rect_width = self.frame_width // 8
-        self.rect_height = round(self.rect_width / (16 / 9))
+        self.rect_height = round(self.frame_height / 8)
+        self.rect_width = round(self.rect_height * (16/9))
 
         self.rtsp_image.mousePressEvent = self.mousePressEvent
         self.rtsp_image.wheelEvent = self.wheelEvent
@@ -40,10 +48,16 @@ class Set_Channel_Dialog(QDialog, form_class):
     def draw_rectangle(self, center_point):
         self.clear_rectangle()
 
-        half_width = self.rect_width // 2
-        half_height = self.rect_height // 2
+        half_width = round(self.rect_width / 2)
+        half_height = round(self.rect_height / 2)
         top_left = QPoint(center_point.x() - half_width, center_point.y() - half_height)
         bottom_right = QPoint(center_point.x() + half_width, center_point.y() + half_height)
+
+        if self.forceSize and self.frame_width >= 1280:
+            self.rect_width = 640
+            self.rect_height = 360
+        if self.forceSize and self.frame_width < 1280:
+            QMessageBox.about(self, "Set Channel", "This image width under 1280")
 
         if top_left.x() < 0:
             top_left.setX(0)
@@ -61,17 +75,34 @@ class Set_Channel_Dialog(QDialog, form_class):
         self.rect_start_point = top_left
         painter = QPainter(self.pixmap)
         painter.setPen(QPen(Qt.green, 2, Qt.SolidLine))
+
         rect = QRect(self.rect_start_point, QSize(self.rect_width, self.rect_height))
         painter.drawRect(rect)
+
+        font = QFont()
+        font.setFamily('Times')
+        font.setBold(True)
+        font.setPointSize(15)
+        painter.setFont(font)
+        if self.frame_width < 1280:
+            painter.drawText(QRect(self.rect_start_point.x() + 10, self.rect_start_point.y() + 10, self.rect_width, self.rect_height), Qt.TextWordWrap, f'{self.rect_width} x {self.rect_height}')  # rect 위에 key 값을 글자로 씀
+        else:
+            painter.drawText(QRect(self.rect_start_point.x() + 10, self.rect_start_point.y() + 10, self.rect_width,self.rect_height), Qt.TextWordWrap,f'{self.rect_width * 2} x {self.rect_height * 2}')  # rect 위에 key 값을 글자로 씀
         painter.end()
+
         self.rtsp_image.setPixmap(self.pixmap)
 
     def clear_rectangle(self):
         self.pixmap = QPixmap(self.original_pixmap)
         self.rtsp_image.setPixmap(self.pixmap)
 
+    def select_froceSize(self):
+        if self.forceSize:
+            self.forceSize = False
+        else:
+            self.forceSize = True
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.LeftButton and self.frame_width >= event.pos().x() >=0 and self.frame_height >= event.pos().y() >= 0:
             self.draw_rectangle(event.pos())
 
     def wheelEvent(self, event):
