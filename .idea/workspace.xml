@@ -6,12 +6,14 @@
   <component name="ChangeListManager">
     <list default="true" id="c89d76f5-0893-494d-a2b4-b07f90877920" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/config.ini" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Config.py" beforeDir="false" afterPath="$PROJECT_DIR$/Config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Dialog/rtsp_dialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/Dialog/rtsp_dialog.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Dialog/set_Channel.py" beforeDir="false" afterPath="$PROJECT_DIR$/Dialog/set_Channel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UI/BroadCast.ui" beforeDir="false" afterPath="$PROJECT_DIR$/UI/BroadCast.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UI/Set_Channel.ui" beforeDir="false" afterPath="$PROJECT_DIR$/UI/Set_Channel.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/main/Analysis-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/Analysis-00.toc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/main/COLLECT-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/COLLECT-00.toc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/main/EXE-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/EXE-00.toc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/main/OnePersonBroadcast.exe" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/OnePersonBroadcast.exe" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/main/OnePersonBroadcast.pkg" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/OnePersonBroadcast.pkg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/main/PYZ-00.pyz" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/PYZ-00.pyz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/config.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

@@ -472,17 +472,17 @@ class WindowClass(QMainWindow, form_class):
         if rtsp_name == "First RTSP":
             if ch_frame[0] != None:
                 #dialog = set_Channel.Set_Channel_Dialog(frame=ch_frame[0].scaled(self.main_screen_width,self.main_screen_height),rtsp_name=rtsp_name)
-                if self.ch_rect['RTSP_1'][2] < 1280:
+                if self.ch_rect['RTSP_1'][2] <= 1280:
                     w = self.ch_rect['RTSP_1'][2]
                     h = self.ch_rect['RTSP_1'][3]
                     self.crop_ch_rect['RTSP_1'][0] = w
                     self.crop_ch_rect['RTSP_1'][1] = h
-                if self.ch_rect['RTSP_1'][2] >= 1280:
+                if self.ch_rect['RTSP_1'][2] > 1280:
                     w = 1280
                     h = 720
                     self.crop_ch_rect['RTSP_1'][0] = w
                     self.crop_ch_rect['RTSP_1'][1] = h
-                dialog = set_Channel.Set_Channel_Dialog(frame=self.main1.pixmap().scaled(self.crop_ch_rect['RTSP_1'][0],self.crop_ch_rect['RTSP_1'][1]), rtsp_name=rtsp_name)
+                dialog = set_Channel.Set_Channel_Dialog(frame=self.main1.pixmap().scaled(self.crop_ch_rect['RTSP_1'][0],self.crop_ch_rect['RTSP_1'][1]), rtsp_name=rtsp_name,origin_width=self.ch_rect['RTSP_1'][2])
                 dialog.get_rectangle_signal.connect(self.setChannelRect)
                 dialog.exec_()
             if ch_frame[0] == None:
@@ -490,18 +490,18 @@ class WindowClass(QMainWindow, form_class):
 
         if rtsp_name == "Second RTSP":
             if ch_frame[1] != None:
-                if self.ch_rect['RTSP_2'][2] < 1280:
+                if self.ch_rect['RTSP_2'][2] <= 1280:
                     w = self.ch_rect['RTSP_2'][2]
                     h = self.ch_rect['RTSP_2'][3]
                     self.crop_ch_rect['RTSP_2'][0] = w
                     self.crop_ch_rect['RTSP_2'][1] = h
-                if self.ch_rect['RTSP_2'][2] >= 1280:
+                if self.ch_rect['RTSP_2'][2] > 1280:
                     w = 1280
                     h = 720
                     self.crop_ch_rect['RTSP_2'][0] = w
                     self.crop_ch_rect['RTSP_2'][1] = h
                 #dialog = set_Channel.Set_Channel_Dialog(frame=ch_frame[1].scaled(self.main_screen_width,self.main_screen_height),rtsp_name=rtsp_name)
-                dialog = set_Channel.Set_Channel_Dialog(frame=self.main2.pixmap().scaled(self.crop_ch_rect['RTSP_2'][0],self.crop_ch_rect['RTSP_2'][1]), rtsp_name=rtsp_name)
+                dialog = set_Channel.Set_Channel_Dialog(frame=self.main2.pixmap().scaled(self.crop_ch_rect['RTSP_2'][0],self.crop_ch_rect['RTSP_2'][1]), rtsp_name=rtsp_name,origin_width=self.ch_rect['RTSP_2'][2])
                 dialog.get_rectangle_signal.connect(self.setChannelRect)
                 dialog.exec_()
             if ch_frame[1] == None:
@@ -510,17 +510,17 @@ class WindowClass(QMainWindow, form_class):
         if rtsp_name == "Third RTSP":
             if ch_frame[2] != None:
                 #dialog = set_Channel.Set_Channel_Dialog(frame=ch_frame[1].scaled(self.main_screen_width,self.main_screen_height),rtsp_name=rtsp_name)
-                if self.ch_rect['RTSP_3'][2] < 1280:
+                if self.ch_rect['RTSP_3'][2] <= 1280:
                     w = self.ch_rect['RTSP_3'][2]
                     h = self.ch_rect['RTSP_3'][3]
                     self.crop_ch_rect['RTSP_3'][0] = w
                     self.crop_ch_rect['RTSP_3'][1] = h
-                if self.ch_rect['RTSP_3'][2] >= 1280:
+                if self.ch_rect['RTSP_3'][2] > 1280:
                     w = 1280
                     h = 720
                     self.crop_ch_rect['RTSP_3'][0] = w
                     self.crop_ch_rect['RTSP_3'][1] = h
-                dialog = set_Channel.Set_Channel_Dialog(frame=self.main3.pixmap().scaled(self.crop_ch_rect['RTSP_3'][0],self.crop_ch_rect['RTSP_3'][1]), rtsp_name=rtsp_name)
+                dialog = set_Channel.Set_Channel_Dialog(frame=self.main3.pixmap().scaled(self.crop_ch_rect['RTSP_3'][0],self.crop_ch_rect['RTSP_3'][1]), rtsp_name=rtsp_name,origin_width=self.ch_rect['RTSP_3'][2])
                 dialog.get_rectangle_signal.connect(self.setChannelRect)
                 dialog.exec_()
             if ch_frame[2] == None:
