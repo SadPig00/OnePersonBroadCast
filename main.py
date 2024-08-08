@@ -22,6 +22,11 @@ ch_frame = [None,None,None]
 #opencv_key = None
 #isClose = False
 global pitchInfo
+global config_width
+global config_height
+config_width = int(Config.config['PROGRAM']['width'])
+config_height  = int(Config.config['PROGRAM']['height'])
+
 pitchInfo = None
 global isExe
 isExe = Config.config['PROGRAM']['isExe'] == 'true'
@@ -76,9 +81,10 @@ class rtsp_worker(QThread):
             cap = cv2.VideoCapture(self.url)
             frame_count = 0
             crop_frame_count = 1
-
             fps = 0
+
             while cap.isOpened() and self.working:
+
                 ret, frame = cap.read()
 
                 if not ret:
@@ -88,7 +94,7 @@ class rtsp_worker(QThread):
                         cap = cv2.VideoCapture(self.url)
                         frame_count = 0
                         crop_frame_count = 1
-                    print('ret false')
+
                     continue
 
                 crop_frame_count += 1
@@ -96,6 +102,7 @@ class rtsp_worker(QThread):
                     crop_frame_count = 1
 
                 self.update_frame.emit(frame, self.name,crop_frame_count)
+
                 #QThread.msleep(1)
 
 
@@ -205,15 +212,17 @@ class MonitThread(QThread):
         self.ch = ch
     def run(self):
         global ch_frame
+        global config_width
+        global config_height
 
         while self.working:
 
             if self.ch == 'RTSP_1':
-                frame = ch_frame[0].copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2], self.channel_rect[3]).scaled(1280, 720)
+                frame = ch_frame[0].copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2], self.channel_rect[3]).scaled(config_width,config_height)
             if self.ch == 'RTSP_2':
-                frame = ch_frame[1].copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],self.channel_rect[3]).scaled(1280, 720)
+                frame = ch_frame[1].copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],self.channel_rect[3]).scaled(config_width,config_height)
             if self.ch == 'RTSP_3':
-                frame = ch_frame[2].copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],self.channel_rect[3]).scaled(1280, 720)
+                frame = ch_frame[2].copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],self.channel_rect[3]).scaled(config_width,config_height)
 
             frame = frame.toImage()
 
@@ -242,15 +251,21 @@ if not isExe:
 class MonitClass(QWidget,monit_class):
     def __init__(self):
         global isExe
+        global config_width
+        global config_height
+
         super().__init__()
         self.setupUi(self)
-        self.monit_label.setGeometry(0,0,1280,720)
+        #self.monit_label.setGeometry(0,0,1280,720)
+        self.resize(config_width, config_height)
+        self.setFixedSize(self.width(),self.height())
+        self.monit_label.setGeometry(0, 0, config_width, config_height)
         if isExe:
             self.monit_label.setPixmap(QPixmap(f"{os.path.dirname(__file__)}\\Assets\\no-signal-icon-black.jpg"))
         if not isExe:
             self.monit_label.setPixmap(QPixmap('./Assets/no-signal-icon-black.jpg'))
-        self.setGeometry(-1281,-721,1280,720)
-        self.setFixedSize(self.width(),self.height())
+        #self.setGeometry(-1281,-721,1280,720)
+        self.setGeometry(-(config_width+1), -(config_height-1), config_width, config_height)
         self.setWindowFlags(Qt.FramelessWindowHint)
         #self.setCursor(QCursor(Qt.BlankCursor))
         self.setWindowOpacity(0)
@@ -437,7 +452,7 @@ class WindowClass(QMainWindow, form_class):
                 Config.config['RTSP']['rtsp_num'] = str(rtsp_number)
                 with open(Config.config_path, 'w', encoding='utf-8') as configfile:
                     Config.config.write(configfile)
-                QMessageBox.about(self, "Set RTSP Number", "Please rerun the program")
+                QMessageBox.about(self, "Set RTSP Number", "Please restart the program")
             except Exception as e:
                 print(e)
 
@@ -538,15 +553,15 @@ class WindowClass(QMainWindow, form_class):
         if rtsp_name == 'First RTSP' and ch_frame[0] != None:
             width_rate = self.ch_rect['RTSP_1'][2] / self.crop_ch_rect['RTSP_1'][0]
             height_rate = self.ch_rect['RTSP_1'][3] / self.crop_ch_rect['RTSP_1'][1]
-            self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate),'RTSP_1']
+            self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate),'RTSP_1',False]
         if rtsp_name == 'Second RTSP' and ch_frame[1] != None:
             width_rate = self.ch_rect['RTSP_2'][2] / self.crop_ch_rect['RTSP_2'][0]
             height_rate = self.ch_rect['RTSP_2'][3] / self.crop_ch_rect['RTSP_2'][1]
-            self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_2']
+            self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_2',False]
         if rtsp_name == 'Third RTSP' and ch_frame[2] != None:
             width_rate = self.ch_rect['RTSP_3'][2] / self.crop_ch_rect['RTSP_3'][0]
             height_rate = self.ch_rect['RTSP_3'][3] / self.crop_ch_rect['RTSP_3'][1]
-            self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_3']
+            self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_3',False]
 
         ##########################################
         """
@@ -626,7 +641,7 @@ class WindowClass(QMainWindow, form_class):
             for index in range(0, len(ch_frame)):
                 ch_frame[index] = None
             #isClose = True
-            cv2.destroyAllWindows()
+            #cv2.destroyAllWindows()
             event.accept()
 
         else:
@@ -687,6 +702,7 @@ class WindowClass(QMainWindow, form_class):
                             self.monit_thread.start()
                         if self.monit_thread != None:
                             self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_1')
+
                         #self.monit_class.monit_label.setPixmap(ch_frame[0].copy(channel_rect[0],channel_rect[1],channel_rect[2],channel_rect[3]).scaled(1280,720))
 
                     if channel_rect[4] == 'RTSP_2':
@@ -707,6 +723,13 @@ class WindowClass(QMainWindow, form_class):
                             self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_3')
                         #self.monit_class.monit_label.setPixmap(ch_frame[1].copy(channel_rect[0], channel_rect[1], channel_rect[2], channel_rect[3]).scaled(1280,720))
                     #opencv_key = cv2.waitKey(1)
+                    for j in self.ch_rect.keys():
+                        if self.ch_rect[j] == None:
+                            continue
+                        if channel_rect == self.ch_rect[j]:
+                            self.ch_rect[j][5] = True
+                        else:
+                            self.ch_rect[j][5] = False
                 except Exception as e:
                     print(f"key handle event error :: {e}")
 
@@ -753,8 +776,7 @@ class WindowClass(QMainWindow, form_class):
             if self.first_rtsp != None:
                 if self.rtsp_worker1 != None:
                     self.rtsp_worker1.stop()
-                #self.rtsp_worker1 = rtsp_worker(self, url=self.first_rtsp,name="first")
-                self.rtsp_worker1 = rtsp_worker(self, url='D:\\ABS영상용\\20240610_133817\\240610_GBSA-01.mp4', name="first")
+                self.rtsp_worker1 = rtsp_worker(self, url=self.first_rtsp,name="first")
                 self.rtsp_worker1.update_frame.connect(self.update_frame)
 
                 self.rtsp_worker1.start()
@@ -771,6 +793,7 @@ class WindowClass(QMainWindow, form_class):
             if self.second_rtsp != None:
                 if self.rtsp_worker2 != None:
                     self.rtsp_worker2.stop()
+
                 self.rtsp_worker2 = rtsp_worker(self, url=self.second_rtsp,name="second")
                 self.rtsp_worker2.update_frame.connect(self.update_frame)
 
@@ -842,12 +865,15 @@ class WindowClass(QMainWindow, form_class):
             self.ch10.setPixmap(self.sub_noSignalImage)
 
 
-    def draw_crop_rect(self,frame,geometry,text,ch):
+    def draw_crop_rect(self,frame,geometry,text,ch,selected):
 
         # TODO: 해당 rect는 원본 비율의 x, y, w, h
         pixmap_with_rects = frame
         painter = QPainter(pixmap_with_rects)
-        pen = QPen(Qt.green)
+        if not selected:
+            pen = QPen(Qt.green)
+        if selected:
+            pen = QPen(Qt.red)
         pen.setWidth(2)
         painter.setPen(pen)
 
@@ -881,7 +907,7 @@ class WindowClass(QMainWindow, form_class):
             ch_frame[0] = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
             crop_frame = main_frame.copy()
-            self.ch_rect['RTSP_1'] = [0, 0, w, h,'RTSP_1']
+            self.ch_rect['RTSP_1'] = [0, 0, w, h,'RTSP_1',False]
 
             for i in self.ch_rect.keys():
                 try:
@@ -895,8 +921,7 @@ class WindowClass(QMainWindow, form_class):
                         y = round(y*height_rate)
                         w = round(w*witdh_rate)
                         h = round(h*height_rate)
-
-                        main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h),text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i).copy()
+                        main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h),text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i,selected=self.ch_rect[i][5]).copy()
                         if crop_frame_count % 15 != 0:
                             continue
                         elif i == 'ch1':
@@ -933,7 +958,7 @@ class WindowClass(QMainWindow, form_class):
             ch_frame[1] = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
             crop_frame = main_frame.copy()
-            self.ch_rect['RTSP_2'] = [0, 0, w, h,'RTSP_2']
+            self.ch_rect['RTSP_2'] = [0, 0, w, h,'RTSP_2',False]
 
             for i in self.ch_rect.keys():
                 try:
@@ -947,7 +972,7 @@ class WindowClass(QMainWindow, form_class):
                         y = round(y * height_rate)
                         w = round(w * witdh_rate)
                         h = round(h * height_rate)
-                        main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h), text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i).copy()
+                        main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h), text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i,selected=self.ch_rect[i][5]).copy()
                         if crop_frame_count % 15 != 0:
                             continue
                         if i == 'ch1':
@@ -981,7 +1006,7 @@ class WindowClass(QMainWindow, form_class):
             ch_frame[2] = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
             crop_frame = main_frame.copy()
-            self.ch_rect['RTSP_3'] = [0, 0, w, h,'RTSP_3']
+            self.ch_rect['RTSP_3'] = [0, 0, w, h,'RTSP_3',False]
 
             for i in self.ch_rect.keys():
                 try:
@@ -995,7 +1020,7 @@ class WindowClass(QMainWindow, form_class):
                         y = round(y * height_rate)
                         w = round(w * witdh_rate)
                         h = round(h * height_rate)
-                        main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h), text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i).copy()
+                        main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h), text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i,selected=self.ch_rect[i][5]).copy()
 
                         if crop_frame_count % 15 != 0:
                             continue

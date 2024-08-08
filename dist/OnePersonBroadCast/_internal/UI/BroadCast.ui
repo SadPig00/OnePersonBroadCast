@@ -76,7 +76,8 @@ border-radius:&quot;25px&quot;;</string>
           <item>
            <widget class="QLabel" name="ch1">
             <property name="styleSheet">
-             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+             <string notr="true">background-color:&quot;black&quot;;
+border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
              <string/>
@@ -125,7 +126,8 @@ color:#C8C6C4;</string>
              </sizepolicy>
             </property>
             <property name="styleSheet">
-             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+             <string notr="true">background-color:&quot;black&quot;;
+border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
              <string/>
@@ -168,7 +170,8 @@ color:#C8C6C4;</string>
           <item>
            <widget class="QLabel" name="ch9">
             <property name="styleSheet">
-             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+             <string notr="true">background-color:&quot;black&quot;;
+border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
              <string/>
@@ -211,7 +214,8 @@ color:#C8C6C4;</string>
           <item>
            <widget class="QLabel" name="ch8">
             <property name="styleSheet">
-             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+             <string notr="true">background-color:&quot;black&quot;;
+border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
              <string/>
@@ -254,7 +258,8 @@ color:#C8C6C4;</string>
           <item>
            <widget class="QLabel" name="ch10">
             <property name="styleSheet">
-             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+             <string notr="true">background-color:&quot;black&quot;;
+border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
              <string/>
@@ -297,7 +302,8 @@ color:#C8C6C4;</string>
           <item>
            <widget class="QLabel" name="ch6">
             <property name="styleSheet">
-             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+             <string notr="true">background-color:&quot;black&quot;;
+border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
              <string/>
@@ -340,7 +346,8 @@ color:#C8C6C4;</string>
           <item>
            <widget class="QLabel" name="ch3">
             <property name="styleSheet">
-             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+             <string notr="true">background-color:&quot;black&quot;;
+border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
              <string/>
@@ -383,7 +390,8 @@ color:#C8C6C4;</string>
           <item>
            <widget class="QLabel" name="ch5">
             <property name="styleSheet">
-             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+             <string notr="true">background-color:&quot;black&quot;;
+border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
              <string/>
@@ -426,7 +434,8 @@ color:#C8C6C4;</string>
           <item>
            <widget class="QLabel" name="ch7">
             <property name="styleSheet">
-             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+             <string notr="true">background-color:&quot;black&quot;;
+border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
              <string/>
@@ -469,7 +478,8 @@ color:#C8C6C4;</string>
           <item>
            <widget class="QLabel" name="ch2">
             <property name="styleSheet">
-             <string notr="true">border : 2px solid rgb(190, 190, 190);</string>
+             <string notr="true">background-color:&quot;black&quot;;
+border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
              <string/>
@@ -565,7 +575,7 @@ color:#C8C6C4;</string>
           <item>
            <widget class="QLabel" name="main1">
             <property name="styleSheet">
-             <string notr="true">background-color:rgb(19, 10, 29);
+             <string notr="true">background-color:&quot;black&quot;;
 border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
@@ -609,7 +619,7 @@ color:#C8C6C4;</string>
           <item>
            <widget class="QLabel" name="main2">
             <property name="styleSheet">
-             <string notr="true">background-color:rgb(19, 10, 29);
+             <string notr="true">background-color:&quot;black&quot;;
 border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
@@ -653,7 +663,7 @@ color:#C8C6C4;</string>
           <item>
            <widget class="QLabel" name="main3">
             <property name="styleSheet">
-             <string notr="true">background-color:rgb(19, 10, 29);
+             <string notr="true">background-color:&quot;black&quot;;
 border : 2px solid rgb(190, 190, 190);</string>
             </property>
             <property name="text">
