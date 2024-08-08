@@ -6,78 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="c89d76f5-0893-494d-a2b4-b07f90877920" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/__init__.pyi" beforeDir="false" afterPath="$PROJECT_DIR$/Lib/site-packages/cv2/__init__.pyi" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/aruco/__init__.pyi" beforeDir="false" afterPath="$PROJECT_DIR$/Lib/site-packages/cv2/aruco/__init__.pyi" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/bgsegm/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/bioinspired/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/ccm/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/colored_kinfu/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/cuda/__init__.pyi" beforeDir="false" afterPath="$PROJECT_DIR$/Lib/site-packages/cv2/cuda/__init__.pyi" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/cv2.pyd" beforeDir="false" afterPath="$PROJECT_DIR$/Lib/site-packages/cv2/cv2.pyd" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/datasets/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/detail/__init__.pyi" beforeDir="false" afterPath="$PROJECT_DIR$/Lib/site-packages/cv2/detail/__init__.pyi" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/dnn_superres/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/dpm/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/dynafu/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/face/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/ft/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/hfs/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/img_hash/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/intensity_transform/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/kinfu/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/kinfu/detail/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/large_kinfu/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/legacy/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/line_descriptor/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/linemod/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/mcc/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/motempl/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/multicalib/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/omnidir/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/optflow/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/phase_unwrapping/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/plot/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/ppf_match_3d/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/quality/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/rapid/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/reg/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/rgbd/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/saliency/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/signal/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/stereo/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/structured_light/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/text/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/typing/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/Lib/site-packages/cv2/typing/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/version.py" beforeDir="false" afterPath="$PROJECT_DIR$/Lib/site-packages/cv2/version.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/videostab/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/wechat_qrcode/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/xfeatures2d/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/ximgproc/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/ximgproc/segmentation/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/cv2/xphoto/__init__.pyi" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/opencv_contrib_python-4.10.0.84.dist-info/INSTALLER" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/opencv_contrib_python-4.10.0.84.dist-info/LICENSE-3RD-PARTY.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/opencv_contrib_python-4.10.0.84.dist-info/LICENSE.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/opencv_contrib_python-4.10.0.84.dist-info/METADATA" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/opencv_contrib_python-4.10.0.84.dist-info/RECORD" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/opencv_contrib_python-4.10.0.84.dist-info/REQUESTED" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/opencv_contrib_python-4.10.0.84.dist-info/WHEEL" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Lib/site-packages/opencv_contrib_python-4.10.0.84.dist-info/top_level.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/main/Analysis-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/Analysis-00.toc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/main/COLLECT-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/COLLECT-00.toc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/main/EXE-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/EXE-00.toc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/main/OnePersonBroadcast.exe" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/OnePersonBroadcast.exe" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/main/OnePersonBroadcast.pkg" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/OnePersonBroadcast.pkg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/main/PYZ-00.pyz" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/PYZ-00.pyz" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/main/warn-main.txt" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/warn-main.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/main/xref-main.html" beforeDir="false" afterPath="$PROJECT_DIR$/build/main/xref-main.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/config.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dist/OnePersonBroadCast/OnePersonBroadcast.exe" beforeDir="false" afterPath="$PROJECT_DIR$/dist/OnePersonBroadCast/OnePersonBroadcast.exe" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dist/OnePersonBroadCast/_internal/UI/BroadCast.ui" beforeDir="false" afterPath="$PROJECT_DIR$/dist/OnePersonBroadCast/_internal/UI/BroadCast.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dist/OnePersonBroadCast/_internal/config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/dist/OnePersonBroadCast/_internal/config.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dist/OnePersonBroadCast/_internal/cv2/cv2.pyd" beforeDir="false" afterPath="$PROJECT_DIR$/dist/OnePersonBroadCast/_internal/cv2/cv2.pyd" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dist/OnePersonBroadCast/_internal/cv2/typing/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/dist/OnePersonBroadCast/_internal/cv2/typing/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dist/OnePersonBroadCast/_internal/cv2/version.py" beforeDir="false" afterPath="$PROJECT_DIR$/dist/OnePersonBroadCast/_internal/cv2/version.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

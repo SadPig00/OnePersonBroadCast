@@ -24,8 +24,13 @@ ch_frame = [None,None,None]
 global pitchInfo
 global config_width
 global config_height
+global video_fps
+global monit_fps
+
 config_width = int(Config.config['PROGRAM']['width'])
 config_height  = int(Config.config['PROGRAM']['height'])
+video_fps = int(Config.config['PROGRAM']['video_fps'])
+monit_fps = int(Config.config['PROGRAM']['monit_fps'])
 
 pitchInfo = None
 global isExe
@@ -77,11 +82,11 @@ class rtsp_worker(QThread):
         self.working = True
 
     def run(self):
+        global video_fps
         try:
             cap = cv2.VideoCapture(self.url)
             frame_count = 0
             crop_frame_count = 1
-            fps = 0
 
             while cap.isOpened() and self.working:
 
@@ -98,7 +103,7 @@ class rtsp_worker(QThread):
                     continue
 
                 crop_frame_count += 1
-                if crop_frame_count == 31:
+                if crop_frame_count == video_fps+1:
                     crop_frame_count = 1
 
                 self.update_frame.emit(frame, self.name,crop_frame_count)
@@ -897,16 +902,20 @@ class WindowClass(QMainWindow, form_class):
     @pyqtSlot(np.ndarray, str, int)
     def update_frame(self, frame, name, crop_frame_count):
         global ch_frame
+        global video_fps
+        global monit_fps
 
         # TODO : 전달받은 opencv 영상을 pixmap으로 변환 ( 원본 )
         h, w, c = frame.shape
         qImg = QImage(frame.data, w, h, w * c, QImage.Format.Format_BGR888)
         pixmap = QPixmap.fromImage(qImg)
-
+        crop_frame = None
         if name == 'first':
             ch_frame[0] = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
-            crop_frame = main_frame.copy()
+            if crop_frame_count % round(video_fps/monit_fps) == 0:
+                crop_frame = main_frame.copy()
+
             self.ch_rect['RTSP_1'] = [0, 0, w, h,'RTSP_1',False]
 
             for i in self.ch_rect.keys():
@@ -922,7 +931,7 @@ class WindowClass(QMainWindow, form_class):
                         w = round(w*witdh_rate)
                         h = round(h*height_rate)
                         main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h),text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i,selected=self.ch_rect[i][5]).copy()
-                        if crop_frame_count % 15 != 0:
+                        if crop_frame_count % round(video_fps/monit_fps) != 0 or crop_frame == None:
                             continue
                         elif i == 'ch1':
                             self.ch1.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
@@ -957,7 +966,8 @@ class WindowClass(QMainWindow, form_class):
         if name == 'second':
             ch_frame[1] = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
-            crop_frame = main_frame.copy()
+            if crop_frame_count % round(video_fps/monit_fps) == 0:
+                crop_frame = main_frame.copy()
             self.ch_rect['RTSP_2'] = [0, 0, w, h,'RTSP_2',False]
 
             for i in self.ch_rect.keys():
@@ -973,7 +983,7 @@ class WindowClass(QMainWindow, form_class):
                         w = round(w * witdh_rate)
                         h = round(h * height_rate)
                         main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h), text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i,selected=self.ch_rect[i][5]).copy()
-                        if crop_frame_count % 15 != 0:
+                        if crop_frame_count % round(video_fps/monit_fps) != 0 or crop_frame == None:
                             continue
                         if i == 'ch1':
                             self.ch1.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
@@ -1005,7 +1015,8 @@ class WindowClass(QMainWindow, form_class):
         if name == 'third':
             ch_frame[2] = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
-            crop_frame = main_frame.copy()
+            if crop_frame_count % round(video_fps/monit_fps) == 0:
+                crop_frame = main_frame.copy()
             self.ch_rect['RTSP_3'] = [0, 0, w, h,'RTSP_3',False]
 
             for i in self.ch_rect.keys():
@@ -1022,7 +1033,7 @@ class WindowClass(QMainWindow, form_class):
                         h = round(h * height_rate)
                         main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h), text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i,selected=self.ch_rect[i][5]).copy()
 
-                        if crop_frame_count % 15 != 0:
+                        if crop_frame_count % round(video_fps/monit_fps) != 0 or crop_frame == None:
                             continue
                         if i == 'ch1':
                             self.ch1.setPixmap(crop_frame.copy(round(self.ch_rect[i][0]*witdh_rate),round(self.ch_rect[i][1]*height_rate),round(self.ch_rect[i][2]*witdh_rate),round(self.ch_rect[i][3]*height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
