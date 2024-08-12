@@ -15,7 +15,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import requests
 
-global ch_frame
+#global ch_frame
 global main1_frame
 global main2_frame
 global main3_frame
@@ -24,7 +24,7 @@ main2_frame = None
 main3_frame = None
 #global opencv_key
 #global isClose
-ch_frame = [None,None,None]
+#ch_frame = [None,None,None]
 #opencv_key = None
 #isClose = False
 global pitchInfo
@@ -260,18 +260,22 @@ class MonitThread(QThread):
         self.ch = ch
         self.isABS = isABS
     def run(self):
-        global ch_frame
+        #global ch_frame
+        global main1_frame
+        global main2_frame
+        global main3_frame
+
         global config_width
         global config_height
 
         while self.working:
 
             if self.ch == 'RTSP_1':
-                frame = ch_frame[0].copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2], self.channel_rect[3]).scaled(config_width,config_height)
+                frame = main1_frame.copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2], self.channel_rect[3]).scaled(config_width,config_height)
             if self.ch == 'RTSP_2':
-                frame = ch_frame[1].copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],self.channel_rect[3]).scaled(config_width,config_height)
+                frame = main2_frame.copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],self.channel_rect[3]).scaled(config_width,config_height)
             if self.ch == 'RTSP_3':
-                frame = ch_frame[2].copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],self.channel_rect[3]).scaled(config_width,config_height)
+                frame = main3_frame.copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],self.channel_rect[3]).scaled(config_width,config_height)
 
             frame = frame.toImage()
 
@@ -640,9 +644,13 @@ class WindowClass(QMainWindow, form_class):
 
     # TODO : crop 이미지 채널 설정 및 rect 설정
     def getChannelSetting(self,rtsp_name):
-        global ch_frame
+        #global ch_frame
+        global main1_frame
+        global main2_frame
+        global main3_frame
+
         if rtsp_name == "First RTSP":
-            if ch_frame[0] != None:
+            if main1_frame != None:
                 #dialog = set_Channel.Set_Channel_Dialog(frame=ch_frame[0].scaled(self.main_screen_width,self.main_screen_height),rtsp_name=rtsp_name)
                 if self.ch_rect['RTSP_1'][2] <= 1280:
                     w = self.ch_rect['RTSP_1'][2]
@@ -657,11 +665,11 @@ class WindowClass(QMainWindow, form_class):
                 dialog = set_Channel.Set_Channel_Dialog(frame=self.main1.pixmap().scaled(self.crop_ch_rect['RTSP_1'][0],self.crop_ch_rect['RTSP_1'][1]), rtsp_name=rtsp_name,origin_width=self.ch_rect['RTSP_1'][2])
                 dialog.get_rectangle_signal.connect(self.setChannelRect)
                 dialog.exec_()
-            if ch_frame[0] == None:
+            if main1_frame == None:
                 QMessageBox.about(self, "RTSP Connect Error", "First RTSP Server Not Connect")
 
         if rtsp_name == "Second RTSP":
-            if ch_frame[1] != None:
+            if main2_frame != None:
                 if self.ch_rect['RTSP_2'][2] <= 1280:
                     w = self.ch_rect['RTSP_2'][2]
                     h = self.ch_rect['RTSP_2'][3]
@@ -676,11 +684,11 @@ class WindowClass(QMainWindow, form_class):
                 dialog = set_Channel.Set_Channel_Dialog(frame=self.main2.pixmap().scaled(self.crop_ch_rect['RTSP_2'][0],self.crop_ch_rect['RTSP_2'][1]), rtsp_name=rtsp_name,origin_width=self.ch_rect['RTSP_2'][2])
                 dialog.get_rectangle_signal.connect(self.setChannelRect)
                 dialog.exec_()
-            if ch_frame[1] == None:
+            if main2_frame == None:
                 QMessageBox.about(self, "RTSP Connect Error", "Second RTSP Server Not Connect")
 
         if rtsp_name == "Third RTSP":
-            if ch_frame[2] != None:
+            if main3_frame != None:
                 #dialog = set_Channel.Set_Channel_Dialog(frame=ch_frame[1].scaled(self.main_screen_width,self.main_screen_height),rtsp_name=rtsp_name)
                 if self.ch_rect['RTSP_3'][2] <= 1280:
                     w = self.ch_rect['RTSP_3'][2]
@@ -695,27 +703,30 @@ class WindowClass(QMainWindow, form_class):
                 dialog = set_Channel.Set_Channel_Dialog(frame=self.main3.pixmap().scaled(self.crop_ch_rect['RTSP_3'][0],self.crop_ch_rect['RTSP_3'][1]), rtsp_name=rtsp_name,origin_width=self.ch_rect['RTSP_3'][2])
                 dialog.get_rectangle_signal.connect(self.setChannelRect)
                 dialog.exec_()
-            if ch_frame[2] == None:
+            if main3_frame == None:
                 QMessageBox.about(self, "RTSP Connect Error", "Third RTSP Server Not Connect")
 
     # TODO : CH 셋팅에서 전달받은 값.. ch1, ch2 ... // First RTSP, Second RTSP // [left_top_x,left_top_y,width,height]
     def setChannelRect(self, ch, rtsp_name, rect_point):
-        global ch_frame
+        #global ch_frame
+        global main1_frame
+        global main2_frame
+        global main3_frame
         ##########################################
 
         crop_x, crop_y, crop_width, crop_height = rect_point
         #width_rate = self.ch_rect['ch1'][2] / self.main_screen_width
         #height_rate = self.ch_rect['ch1'][3] / self.main_screen_height
 
-        if rtsp_name == 'First RTSP' and ch_frame[0] != None:
+        if rtsp_name == 'First RTSP' and main1_frame != None:
             width_rate = self.ch_rect['RTSP_1'][2] / self.crop_ch_rect['RTSP_1'][0]
             height_rate = self.ch_rect['RTSP_1'][3] / self.crop_ch_rect['RTSP_1'][1]
             self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate),'RTSP_1',False]
-        if rtsp_name == 'Second RTSP' and ch_frame[1] != None:
+        if rtsp_name == 'Second RTSP' and main2_frame != None:
             width_rate = self.ch_rect['RTSP_2'][2] / self.crop_ch_rect['RTSP_2'][0]
             height_rate = self.ch_rect['RTSP_2'][3] / self.crop_ch_rect['RTSP_2'][1]
             self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_2',False]
-        if rtsp_name == 'Third RTSP' and ch_frame[2] != None:
+        if rtsp_name == 'Third RTSP' and main3_frame != None:
             width_rate = self.ch_rect['RTSP_3'][2] / self.crop_ch_rect['RTSP_3'][0]
             height_rate = self.ch_rect['RTSP_3'][3] / self.crop_ch_rect['RTSP_3'][1]
             self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_3',False]
@@ -839,10 +850,16 @@ class WindowClass(QMainWindow, form_class):
 
             self.abs_request_thread.stop()
             time.sleep(0.5)
-            global ch_frame
+            #global ch_frame
+            global main1_frame
+            global main2_frame
+            global main3_frame
             #global isClose
-            for index in range(0, len(ch_frame)):
-                ch_frame[index] = None
+            #for index in range(0, len(ch_frame)):
+            #    ch_frame[index] = None
+            main1_frame = None
+            main2_frame = None
+            main3_frame = None
             #isClose = True
             #cv2.destroyAllWindows()
             event.accept()
@@ -852,7 +869,10 @@ class WindowClass(QMainWindow, form_class):
 
 
     def keyPressEvent(self, event):
-        global ch_frame
+        #global ch_frame
+        global main1_frame
+        global main2_frame
+        global main3_frame
         #global opencv_key
 
         if event.key() == Qt.Key_Q:
@@ -1104,7 +1124,10 @@ class WindowClass(QMainWindow, form_class):
     # TODO : main1, main2 화면에 출력 ( Rect ) signal 받는 slot 함수
     @pyqtSlot(np.ndarray, str, int)
     def update_frame(self, frame, name, crop_frame_count):
-        global ch_frame
+        #global ch_frame
+        global main1_frame
+        global main2_frame
+        global main3_frame
         global video_fps
         global monit_fps
 
@@ -1114,7 +1137,7 @@ class WindowClass(QMainWindow, form_class):
         pixmap = QPixmap.fromImage(qImg)
         crop_frame = None
         if name == 'first':
-            ch_frame[0] = pixmap
+            main1_frame = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
 
             if crop_frame_count % round(video_fps/monit_fps) == 0:
@@ -1169,7 +1192,7 @@ class WindowClass(QMainWindow, form_class):
 
 
         if name == 'second':
-            ch_frame[1] = pixmap
+            main2_frame = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
             if crop_frame_count % round(video_fps/monit_fps) == 0:
                 crop_frame = main_frame.copy()
@@ -1218,7 +1241,7 @@ class WindowClass(QMainWindow, form_class):
             #self.main2.setPixmap(main_frame.scaled(self.main_screen_width, self.main_screen_height))
 
         if name == 'third':
-            ch_frame[2] = pixmap
+            main3_frame = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
             if crop_frame_count % round(video_fps/monit_fps) == 0:
                 crop_frame = main_frame.copy()
