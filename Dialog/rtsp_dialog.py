@@ -45,7 +45,7 @@ class RTSP_dialog(QDialog, form_class):
             Config.config.set('RTSP', 'second_rtsp', address)
         if self.server_num == "Third RTSP":
             Config.config.set('RTSP', 'third_rtsp', address)
-        with open(Config.config_path,'w') as fp:
+        with open(Config.config_path,'w',encoding="UTF-8") as fp:
             Config.config.write(fp)
         self.rtsp_address_signal.emit(address)  # 시그널 발송
         self.accept()

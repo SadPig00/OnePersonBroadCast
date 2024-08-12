@@ -8,6 +8,7 @@ a = Analysis(
     datas=[
     ('C:/Users/kangchul/PycharmProjects/OnePersonBroadcase/config.ini','./'),
     ('C:/Users/kangchul/PycharmProjects/OnePersonBroadcase/Assets/no-signal-icon-black.jpg','./Assets'),
+    ('C:/Users/kangchul/PycharmProjects/OnePersonBroadcase/Assets/strikeZone.png','./Assets'),
     ('C:/Users/kangchul/PycharmProjects/OnePersonBroadcase/UI/BroadCast.ui','./UI'),
     ('C:/Users/kangchul/PycharmProjects/OnePersonBroadcase/UI/monit_widget.ui','./UI'),
     ('C:/Users/kangchul/PycharmProjects/OnePersonBroadcase/UI/RTSP_Address.ui','./Dialog/UI'),

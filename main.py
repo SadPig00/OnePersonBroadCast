@@ -16,6 +16,12 @@ from PyQt5.QtGui import *
 import requests
 
 global ch_frame
+global main1_frame
+global main2_frame
+global main3_frame
+main1_frame = None
+main2_frame = None
+main3_frame = None
 #global opencv_key
 #global isClose
 ch_frame = [None,None,None]
@@ -37,6 +43,45 @@ global isExe
 isExe = Config.config['PROGRAM']['isExe'] == 'true'
 
 # TODO : ABS 서버에서 스트라이크 좌표 가져오는 쓰레드 함수
+class GetPitchInfo(QThread):
+    def __init__(self,parent):
+        super().__init__()
+        self.working = True
+        self.parent = parent
+    def run(self):
+        global pitchInfo
+        pitch_temp = None
+        abs_start_time = 0
+        while self.working:
+            try:
+                for i in self.parent.isABS.keys():
+                    if self.parent.isABS[i]:
+                        response = requests.get(url=Config.config['REQUEST']['uri'], timeout=1)
+                        data = response.json()
+                        if 'box_bottom' in data.keys():
+                            # TODO : 공 좌표 받은 이후 4초간 데이터 변동 없으면 좌표 표출 X
+                            if data != pitch_temp:
+                                QThread.msleep(int(Config.config['ABS']['mtime_delay'])) # RTSP 서버와의 딜레이 조정
+                                pitchInfo = data
+                                pitch_temp = data
+                                abs_start_time = time.time()
+                            elif time.time() - abs_start_time > float(Config.config['ABS']['ball_reset_time']):
+                                abs_start_time = 0
+                                pitchInfo = None
+
+                        if 'error' in data.keys():
+                            pitchInfo = None
+                        break
+                QThread.msleep(100)
+            except Exception as e:
+                pitchInfo = None
+                print(f"request fail :: {e}")
+
+    def stop(self):
+        self.working = False
+        self.quit()
+        self.wait(2000)
+"""
 def getPitchInfo():
     global pitchInfo
     while True:
@@ -46,14 +91,12 @@ def getPitchInfo():
 
             if 'box_bottom' in data.keys():
                 pitchInfo = data
-            else :
+            if 'error' in data.keys():
                 pitchInfo = None
-            print(response)
-            print(pitchInfo)
-            time.sleep(0.5)
+            time.sleep(0.1)
         except Exception as e:
             print(f"request fail :: {e}")
-
+"""
 
 # TODO : 좌표 알아내는 핸들러 (현재 미사용)
 def mouse_handler(event, x, y, flags, param):  # 마우스로 좌표 알아내기
@@ -208,13 +251,14 @@ class CropUpdateThread(QThread):
 """
 # TODO : OBS( 방송화면 ) 출력용 모니터 스레드
 class MonitThread(QThread):
-    update_monit_frame = pyqtSignal(QImage)
+    update_monit_frame = pyqtSignal(QImage,bool)
 
-    def __init__(self,channel_rect,ch):
+    def __init__(self,channel_rect,ch, isABS):
         super().__init__()
         self.working = True
         self.channel_rect = channel_rect
         self.ch = ch
+        self.isABS = isABS
     def run(self):
         global ch_frame
         global config_width
@@ -231,12 +275,13 @@ class MonitThread(QThread):
 
             frame = frame.toImage()
 
-            self.update_monit_frame.emit(frame)
+            self.update_monit_frame.emit(frame,self.isABS)
 
             QThread.msleep(1)
-    def change_channel_rect(self,channel_rect,ch):
+    def change_channel_rect(self,channel_rect,ch, isABS):
         self.channel_rect = channel_rect
         self.ch = ch
+        self.isABS = isABS
 
     def stop(self):
         self.working = False
@@ -280,12 +325,15 @@ class MonitClass(QWidget,monit_class):
 class WindowClass(QMainWindow, form_class):
     def __init__(self):
         global isExe
+        global config_width
+        global config_height
+
         super().__init__()
         self.window_width = tkinter.Tk().winfo_screenwidth()
         self.window_height = tkinter.Tk().winfo_screenheight()
         self.setupUi(self)
 
-        self.resize(round(self.window_width*0.9), round(self.window_height*0.9))
+        self.resize(round(self.window_width*0.8), round(self.window_height*0.8))
         self.rtsp_num = int(Config.config['RTSP']['rtsp_num'])
         # TODO : selected color :: rgb(253, 8, 8) // no selected color :: rgb(190, 190, 190);
         self.selected_color="border : 2px solid rgb(253,8,8)"
@@ -317,9 +365,13 @@ class WindowClass(QMainWindow, form_class):
 
         # TODO : 이미지 사이즈 사용자의 모니터 사이즈에 맞춰 16:9 비율로 설정
         if self.rtsp_num == 2 :
+
             self.main_screen_width = round(self.window_width / 2.15)
             self.main_screen_height = round(self.main_screen_width / self.rate)
-
+            """
+            self.main_screen_height = round(self.window_height/2.5)
+            self.main_screen_width = round(self.main_screen_height * self.rate)
+            """
             # TODO : main rtsp 채널 초기 이미지 셋팅
             self.main3.deleteLater()
             self.main3_label.deleteLater()
@@ -410,7 +462,7 @@ class WindowClass(QMainWindow, form_class):
 
         # TODO : Menu 버튼의 ShortCut Key 뷰
         shortCut_Key_box = QMessageBox()
-        shortCut_Key_box.setMinimumWidth(20031)
+        #shortCut_Key_box.setMinimumWidth(20031)
         self.actionView_ShortCut_Key.triggered.connect(lambda :
                                                        shortCut_Key_box.about(self,"ShortCut Key",f"RTSP_1 : Ins                                        ."
                                                                                   f"\nRTSP_2 : Home\nRTSP_3 : PgUp\n"
@@ -437,16 +489,116 @@ class WindowClass(QMainWindow, form_class):
         self.actionStop_CH_10.triggered.connect(lambda: self.stop_ch(ch='ch10'))
 
 
+        # TODO : ABS 송출을 위한 스트라이크존 ( 방송 출력 모니터 비율에 맞춰 scaled )
+        self.strike_zone = QPixmap(f"{os.path.dirname(__file__)}\\Assets\\strikeZone.png")
+        strike_zone_width = self.strike_zone.width()
+        strike_zone_height = self.strike_zone.height()
+        # 출력 영상의 (100 /3.2)% 비율로 사이즈 조정
+        resize_rate = config_height / 3.2 / strike_zone_height
+        self.strike_zone = self.strike_zone.scaled(round(strike_zone_width * resize_rate),round(strike_zone_height * resize_rate))
 
+        strike_zone_width = self.strike_zone.width()
+        strike_zone_height = self.strike_zone.height()
+
+        # 스트라이크 존 이미지 우측과 하단을 영상에서 띄어놓음
+        self.strike_zone_image_x = config_width - round(strike_zone_width + (config_width * 0.02)) # 스트라이크존 전체 이미지 좌상단 x
+        self.strike_zone_image_y = config_height - round(strike_zone_height + (config_height * 0.03)) # 스트라이크존 전체 이미지 좌상단 y
+
+        # start x,y (40,40) // end x,y (100, 130)   :: rate start x,y ( (width * 40/140), (height*40/240) ) end x,y ( (width * 100/140), (height*130/240) )
+        # TODO : ABS config 설정
+        self.ball_size = round(int(Config.config['ABS']['ball_size'])*(config_width/1920))
+        self.zone_width = int(Config.config['ABS']['zone_width'])
+
+        self.strike_zone_start_x = self.strike_zone_image_x + round(strike_zone_width * 40 / 140) - int(self.ball_size/2) # 실질적인 스트라이크존 좌상단 x
+        self.strike_zone_start_y = self.strike_zone_image_y + round(strike_zone_height * 40 / 240) - int(self.ball_size/2) # 실질적인 스트라이크존 좌상단 y
+        self.strike_zone_end_x = self.strike_zone_image_x +round(strike_zone_width * 100 / 140) - int(self.ball_size/2) # 실질적인 스트라이크존 우하단 x
+        self.strike_zone_end_y = self.strike_zone_image_y + round(strike_zone_height * 130 / 240) - int(self.ball_size/2) # 실질적인 스트라이크존 우하단 y
+
+        self.km_start_x = self.strike_zone_image_x
+        self.km_start_y = self.strike_zone_image_y + round(strike_zone_height * (21/24))
+
+        # TODO : ABS 송출을 위한 isABS 값 초기 설정
+        if self.rtsp_num == 2:
+            self.isABS = {'RTSP_1': False, 'RTSP_2': False, 'ch1': False, 'ch2': False, 'ch3': False, 'ch4': False,
+                            'ch5': False, 'ch6': False, 'ch7': False, 'ch8': False, 'ch9': False, 'ch10': False}
+
+        elif self.rtsp_num == 3:
+            self.isABS = {'RTSP_1': False, 'RTSP_2': False, 'RTSP_3': False, 'ch1': False, 'ch2': False, 'ch3': False,
+                            'ch4': False,'ch5': False, 'ch6': False, 'ch7': False, 'ch8': False, 'ch9': False, 'ch10': False}
+
+        # TODO : Menu ABS run 버튼 클릭
+        if self.rtsp_num == 2:
+            self.actionRun_ABS_RTSP_1.triggered.connect(lambda : self.setIsABS(name='RTSP_1',onABS=True))
+            self.actionRun_ABS_RTSP_2.triggered.connect(lambda: self.setIsABS(name='RTSP_2', onABS=True))
+            self.actionRun_ABS_CH_1.triggered.connect(lambda: self.setIsABS(name='ch1', onABS=True))
+            self.actionRun_ABS_CH_2.triggered.connect(lambda: self.setIsABS(name='ch2', onABS=True))
+            self.actionRun_ABS_CH_3.triggered.connect(lambda: self.setIsABS(name='ch3', onABS=True))
+            self.actionRun_ABS_CH_4.triggered.connect(lambda: self.setIsABS(name='ch4', onABS=True))
+            self.actionRun_ABS_CH_5.triggered.connect(lambda: self.setIsABS(name='ch5', onABS=True))
+            self.actionRun_ABS_CH_6.triggered.connect(lambda: self.setIsABS(name='ch6', onABS=True))
+            self.actionRun_ABS_CH_7.triggered.connect(lambda: self.setIsABS(name='ch7', onABS=True))
+            self.actionRun_ABS_CH_8.triggered.connect(lambda: self.setIsABS(name='ch8', onABS=True))
+            self.actionRun_ABS_CH_9.triggered.connect(lambda: self.setIsABS(name='ch9', onABS=True))
+            self.actionRun_ABS_CH_10.triggered.connect(lambda: self.setIsABS(name='ch10', onABS=True))
+        elif self.rtsp_num == 3:
+            self.actionRun_ABS_RTSP_1.triggered.connect(lambda: self.setIsABS(name='RTSP_1', onABS=True))
+            self.actionRun_ABS_RTSP_2.triggered.connect(lambda: self.setIsABS(name='RTSP_2', onABS=True))
+            self.actionRun_ABS_RTSP_3.triggered.connect(lambda: self.setIsABS(name='RTSP_3', onABS=True))
+            self.actionRun_ABS_CH_1.triggered.connect(lambda: self.setIsABS(name='ch1', onABS=True))
+            self.actionRun_ABS_CH_2.triggered.connect(lambda: self.setIsABS(name='ch2', onABS=True))
+            self.actionRun_ABS_CH_3.triggered.connect(lambda: self.setIsABS(name='ch3', onABS=True))
+            self.actionRun_ABS_CH_4.triggered.connect(lambda: self.setIsABS(name='ch4', onABS=True))
+            self.actionRun_ABS_CH_5.triggered.connect(lambda: self.setIsABS(name='ch5', onABS=True))
+            self.actionRun_ABS_CH_6.triggered.connect(lambda: self.setIsABS(name='ch6', onABS=True))
+            self.actionRun_ABS_CH_7.triggered.connect(lambda: self.setIsABS(name='ch7', onABS=True))
+            self.actionRun_ABS_CH_8.triggered.connect(lambda: self.setIsABS(name='ch8', onABS=True))
+            self.actionRun_ABS_CH_9.triggered.connect(lambda: self.setIsABS(name='ch9', onABS=True))
+            self.actionRun_ABS_CH_10.triggered.connect(lambda: self.setIsABS(name='ch10', onABS=True))
+
+        # TODO : Menu ABS stop 버튼 클릭
+        if self.rtsp_num == 2:
+            self.actionStop_ABS_RTSP_1.triggered.connect(lambda : self.setIsABS(name='RTSP_1',onABS=False))
+            self.actionStop_ABS_RTSP_2.triggered.connect(lambda: self.setIsABS(name='RTSP_2', onABS=False))
+            self.actionStop_ABS_CH_1.triggered.connect(lambda: self.setIsABS(name='ch1', onABS=False))
+            self.actionStop_ABS_CH_2.triggered.connect(lambda: self.setIsABS(name='ch2', onABS=False))
+            self.actionStop_ABS_CH_3.triggered.connect(lambda: self.setIsABS(name='ch3', onABS=False))
+            self.actionStop_ABS_CH_4.triggered.connect(lambda: self.setIsABS(name='ch4', onABS=False))
+            self.actionStop_ABS_CH_5.triggered.connect(lambda: self.setIsABS(name='ch5', onABS=False))
+            self.actionStop_ABS_CH_6.triggered.connect(lambda: self.setIsABS(name='ch6', onABS=False))
+            self.actionStop_ABS_CH_7.triggered.connect(lambda: self.setIsABS(name='ch7', onABS=False))
+            self.actionStop_ABS_CH_8.triggered.connect(lambda: self.setIsABS(name='ch8', onABS=False))
+            self.actionStop_ABS_CH_9.triggered.connect(lambda: self.setIsABS(name='ch9', onABS=False))
+            self.actionStop_ABS_CH_10.triggered.connect(lambda: self.setIsABS(name='ch10', onABS=False))
+        elif self.rtsp_num == 3:
+            self.actionStop_ABS_RTSP_1.triggered.connect(lambda: self.setIsABS(name='RTSP_1', onABS=False))
+            self.actionStop_ABS_RTSP_2.triggered.connect(lambda: self.setIsABS(name='RTSP_2', onABS=False))
+            self.actionStop_ABS_RTSP_3.triggered.connect(lambda: self.setIsABS(name='RTSP_3', onABS=False))
+            self.actionStop_ABS_CH_1.triggered.connect(lambda: self.setIsABS(name='ch1', onABS=False))
+            self.actionStop_ABS_CH_2.triggered.connect(lambda: self.setIsABS(name='ch2', onABS=False))
+            self.actionStop_ABS_CH_3.triggered.connect(lambda: self.setIsABS(name='ch3', onABS=False))
+            self.actionStop_ABS_CH_4.triggered.connect(lambda: self.setIsABS(name='ch4', onABS=False))
+            self.actionStop_ABS_CH_5.triggered.connect(lambda: self.setIsABS(name='ch5', onABS=False))
+            self.actionStop_ABS_CH_6.triggered.connect(lambda: self.setIsABS(name='ch6', onABS=False))
+            self.actionStop_ABS_CH_7.triggered.connect(lambda: self.setIsABS(name='ch7', onABS=False))
+            self.actionStop_ABS_CH_8.triggered.connect(lambda: self.setIsABS(name='ch8', onABS=False))
+            self.actionStop_ABS_CH_9.triggered.connect(lambda: self.setIsABS(name='ch9', onABS=False))
+            self.actionStop_ABS_CH_10.triggered.connect(lambda: self.setIsABS(name='ch10', onABS=False))
 
         # TODO : OBS (방송) 화면 송출한 서브 화면 표시 (widget)
         self.monit_class = MonitClass()
         self.monit_thread = None
 
         # TODO : ABS 서버 통신 쓰레드
-        self.abs_request_thread = threading.Thread(target=getPitchInfo)
+        #self.abs_request_thread = threading.Thread(target=getPitchInfo)
+        #self.abs_request_thread.start()
+        self.abs_request_thread = GetPitchInfo(parent=self)
+        self.abs_request_thread.start()
 
 
+
+    # TODO : ABS Setting
+    def setIsABS(self,name,onABS):
+        self.isABS[name] = onABS
 
     # TODO : RTSP 서버 갯수 정하기
     def setRTSP_Number(self,rtsp_number):
@@ -613,10 +765,54 @@ class WindowClass(QMainWindow, form_class):
             print(f"update_channel_pixmap function error :: {e}")
 
     # TODO : 모니터 화면 업데이트 스레드 signal 받는 slot 함수
-    @pyqtSlot(QImage)
-    def update_monit_frame(self,qimage):
+    @pyqtSlot(QImage,bool)
+    def update_monit_frame(self,qimage,isABS):
+        global pitchInfo
         pixmap = QPixmap.fromImage(qimage)
+
+        # TODO : 스트라이크존 isABS 판별
+        if isABS:
+            painter = QPainter(pixmap)
+            painter.setOpacity(0.6)
+            painter.drawPixmap(self.strike_zone_image_x,self.strike_zone_image_y,self.strike_zone)
+            if pitchInfo is not None:
+                try:
+                    if Config.config['ABS']['reverse'] == 'true':
+                        x_rate = ((self.zone_width / 2) + (pitchInfo['pitch_x'] / 10000)) / self.zone_width
+                        x_point = round(self.strike_zone_start_x + ((self.strike_zone_end_x - self.strike_zone_start_x) * x_rate))
+                        x_point = round(2*(self.strike_zone_start_x + (self.strike_zone_end_x - self.strike_zone_start_x)/2) - x_point)
+
+                    if Config.config['ABS']['reverse'] == 'false':
+                        x_rate = ((self.zone_width/2) + (pitchInfo['pitch_x']/10000)) / self.zone_width
+                        x_point = round(self.strike_zone_start_x + ((self.strike_zone_end_x - self.strike_zone_start_x ) * x_rate))
+                    y_rate = ((pitchInfo['pitch_y'] - pitchInfo['box_bottom']) / (pitchInfo['box_top']-pitchInfo['box_bottom']))
+                    y_point = round(self.strike_zone_end_y - ((self.strike_zone_end_y - self.strike_zone_start_y) * y_rate))
+
+                    if x_point <= self.strike_zone_image_x:
+                        x_point = self.strike_zone_image_x  + self.ball_size
+                    if x_point >= self.strike_zone_image_x + self.strike_zone.width():
+                        x_point = self.strike_zone_image_x + self.strike_zone.width() - 2*self.ball_size
+                    if y_point <= self.strike_zone_image_y:
+                        y_point = self.strike_zone_image_y  + self.ball_size
+                    if y_point >= self.strike_zone_image_y + self.km_start_y:
+                        y_point = self.strike_zone_image_y + self.km_start_y  - 2*self.ball_size
+
+                    painter.setPen(QPen(Qt.gray, self.ball_size))
+                    painter.drawEllipse(x_point,y_point,self.ball_size,self.ball_size)
+                    global config_width
+                    painter.setPen(QPen(Qt.red))
+                    painter.setFont(QFont('Times',round(25*(config_width/1920)),QFont.Bold))
+                    painter.drawText(QRect(self.km_start_x, self.km_start_y, self.strike_zone.width(), self.strike_zone_image_y+self.strike_zone.height()-self.km_start_y),Qt.AlignCenter, f"{pitchInfo['speed']}KM")
+                except Exception as e:
+                    print(f"ABS ball point error :: {e}")
+            painter.end()
+
         self.monit_class.monit_label.setPixmap(pixmap)
+    def setStrikeZone(self,qimage):
+        painter = QPainter(qimage)
+        painter.setOpacity(0.6)
+        painter.drawPixmap(self.strike_zone_image_x,self.strike_zone_image_y,self.strike_zone)
+        painter.end()
 
     def closeEvent(self, event):
         message = QMessageBox.question(self, "OnePersonBroadcast", "Are you sure you want to quit?")
@@ -640,6 +836,8 @@ class WindowClass(QMainWindow, form_class):
             self.monit_class.close()
             if self.monit_thread != None:
                 self.monit_thread.stop()
+
+            self.abs_request_thread.stop()
             time.sleep(0.5)
             global ch_frame
             #global isClose
@@ -687,7 +885,7 @@ class WindowClass(QMainWindow, form_class):
                 self.run_third_rtsp()
 
         # TODO : OBS ( 화면출력 ) 변경시 Monit Thread에 데이터 전달
-        def handle_channel_key(channel, channel_rect):
+        def handle_channel_key(channel, channel_rect, isABS):
             #global isClose
             #while channel_rect != None:
             if channel_rect != None:
@@ -702,30 +900,30 @@ class WindowClass(QMainWindow, form_class):
                     #    break
                     if channel_rect[4] == 'RTSP_1':
                         if self.monit_thread == None:
-                            self.monit_thread = MonitThread(channel_rect=channel_rect,ch='RTSP_1')
+                            self.monit_thread = MonitThread(channel_rect=channel_rect,ch='RTSP_1',isABS=isABS)
                             self.monit_thread.update_monit_frame.connect(self.update_monit_frame)
                             self.monit_thread.start()
                         if self.monit_thread != None:
-                            self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_1')
+                            self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_1',isABS=isABS)
 
                         #self.monit_class.monit_label.setPixmap(ch_frame[0].copy(channel_rect[0],channel_rect[1],channel_rect[2],channel_rect[3]).scaled(1280,720))
 
                     if channel_rect[4] == 'RTSP_2':
                         if self.monit_thread == None:
-                            self.monit_thread = MonitThread(channel_rect=channel_rect, ch='RTSP_2')
+                            self.monit_thread = MonitThread(channel_rect=channel_rect, ch='RTSP_2',isABS=isABS)
                             self.monit_thread.update_monit_frame.connect(self.update_monit_frame)
                             self.monit_thread.start()
                         if self.monit_thread != None:
-                            self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_2')
+                            self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_2',isABS=isABS)
                         #self.monit_class.monit_label.setPixmap(ch_frame[1].copy(channel_rect[0], channel_rect[1], channel_rect[2], channel_rect[3]).scaled(1280,720))
 
                     if channel_rect[4] == 'RTSP_3':
                         if self.monit_thread == None:
-                            self.monit_thread = MonitThread(channel_rect=channel_rect, ch='RTSP_3')
+                            self.monit_thread = MonitThread(channel_rect=channel_rect, ch='RTSP_3',isABS=isABS)
                             self.monit_thread.update_monit_frame.connect(self.update_monit_frame)
                             self.monit_thread.start()
                         if self.monit_thread != None:
-                            self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_3')
+                            self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_3',isABS=isABS)
                         #self.monit_class.monit_label.setPixmap(ch_frame[1].copy(channel_rect[0], channel_rect[1], channel_rect[2], channel_rect[3]).scaled(1280,720))
                     #opencv_key = cv2.waitKey(1)
                     for j in self.ch_rect.keys():
@@ -740,40 +938,40 @@ class WindowClass(QMainWindow, form_class):
 
         if self.rtsp_num == 2:
             key_map = {
-                Qt.Key.Key_Insert: (self.main1, self.ch_rect['RTSP_1']),
-                Qt.Key.Key_Home: (self.main2, self.ch_rect['RTSP_2']),
-                Qt.Key.Key_1: (self.ch1, self.ch_rect['ch1']),
-                Qt.Key.Key_2: (self.ch2, self.ch_rect['ch2']),
-                Qt.Key.Key_3: (self.ch3, self.ch_rect['ch3']),
-                Qt.Key.Key_4: (self.ch4, self.ch_rect['ch4']),
-                Qt.Key.Key_5: (self.ch5, self.ch_rect['ch5']),
-                Qt.Key.Key_6: (self.ch6, self.ch_rect['ch6']),
-                Qt.Key.Key_7: (self.ch7, self.ch_rect['ch7']),
-                Qt.Key.Key_8: (self.ch8, self.ch_rect['ch8']),
-                Qt.Key.Key_9: (self.ch9, self.ch_rect['ch9']),
-                Qt.Key.Key_0: (self.ch10, self.ch_rect['ch10']),
+                Qt.Key.Key_Insert: (self.main1, self.ch_rect['RTSP_1'],self.isABS['RTSP_1']),
+                Qt.Key.Key_Home: (self.main2, self.ch_rect['RTSP_2'],self.isABS['RTSP_2']),
+                Qt.Key.Key_1: (self.ch1, self.ch_rect['ch1'],self.isABS['ch1']),
+                Qt.Key.Key_2: (self.ch2, self.ch_rect['ch2'],self.isABS['ch2']),
+                Qt.Key.Key_3: (self.ch3, self.ch_rect['ch3'],self.isABS['ch3']),
+                Qt.Key.Key_4: (self.ch4, self.ch_rect['ch4'],self.isABS['ch4']),
+                Qt.Key.Key_5: (self.ch5, self.ch_rect['ch5'],self.isABS['ch5']),
+                Qt.Key.Key_6: (self.ch6, self.ch_rect['ch6'],self.isABS['ch6']),
+                Qt.Key.Key_7: (self.ch7, self.ch_rect['ch7'],self.isABS['ch7']),
+                Qt.Key.Key_8: (self.ch8, self.ch_rect['ch8'],self.isABS['ch8']),
+                Qt.Key.Key_9: (self.ch9, self.ch_rect['ch9'],self.isABS['ch9']),
+                Qt.Key.Key_0: (self.ch10, self.ch_rect['ch10'],self.isABS['ch10']),
             }
         if self.rtsp_num == 3:
             key_map = {
-                Qt.Key.Key_Insert: (self.main1, self.ch_rect['RTSP_1']),
-                Qt.Key.Key_Home: (self.main2, self.ch_rect['RTSP_2']),
-                Qt.Key.Key_PageUp: (self.main3, self.ch_rect['RTSP_3']),
-                Qt.Key.Key_1: (self.ch1, self.ch_rect['ch1']),
-                Qt.Key.Key_2: (self.ch2, self.ch_rect['ch2']),
-                Qt.Key.Key_3: (self.ch3, self.ch_rect['ch3']),
-                Qt.Key.Key_4: (self.ch4, self.ch_rect['ch4']),
-                Qt.Key.Key_5: (self.ch5, self.ch_rect['ch5']),
-                Qt.Key.Key_6: (self.ch6, self.ch_rect['ch6']),
-                Qt.Key.Key_7: (self.ch7, self.ch_rect['ch7']),
-                Qt.Key.Key_8: (self.ch8, self.ch_rect['ch8']),
-                Qt.Key.Key_9: (self.ch9, self.ch_rect['ch9']),
-                Qt.Key.Key_0: (self.ch10, self.ch_rect['ch10']),
+                Qt.Key.Key_Insert: (self.main1, self.ch_rect['RTSP_1'],self.isABS['RTSP_1']),
+                Qt.Key.Key_Home: (self.main2, self.ch_rect['RTSP_2'],self.isABS['RTSP_2']),
+                Qt.Key.Key_PageUp: (self.main3, self.ch_rect['RTSP_3'],self.isABS['RTSP_3']),
+                Qt.Key.Key_1: (self.ch1, self.ch_rect['ch1'],self.isABS['ch1']),
+                Qt.Key.Key_2: (self.ch2, self.ch_rect['ch2'],self.isABS['ch2']),
+                Qt.Key.Key_3: (self.ch3, self.ch_rect['ch3'],self.isABS['ch3']),
+                Qt.Key.Key_4: (self.ch4, self.ch_rect['ch4'],self.isABS['ch4']),
+                Qt.Key.Key_5: (self.ch5, self.ch_rect['ch5'],self.isABS['ch5']),
+                Qt.Key.Key_6: (self.ch6, self.ch_rect['ch6'],self.isABS['ch6']),
+                Qt.Key.Key_7: (self.ch7, self.ch_rect['ch7'],self.isABS['ch7']),
+                Qt.Key.Key_8: (self.ch8, self.ch_rect['ch8'],self.isABS['ch8']),
+                Qt.Key.Key_9: (self.ch9, self.ch_rect['ch9'],self.isABS['ch9']),
+                Qt.Key.Key_0: (self.ch10, self.ch_rect['ch10'],self.isABS['ch10']),
             }
 
 
         if event.key() in key_map:
-            channel, channel_rect = key_map[event.key()]
-            handle_channel_key(channel, channel_rect)
+            channel, channel_rect, isABS = key_map[event.key()]
+            handle_channel_key(channel, channel_rect, isABS)
 
     # TODO : 첫번째 rtsp 서버 실행 함수
     def run_first_rtsp(self):
@@ -875,6 +1073,7 @@ class WindowClass(QMainWindow, form_class):
         # TODO: 해당 rect는 원본 비율의 x, y, w, h
         pixmap_with_rects = frame
         painter = QPainter(pixmap_with_rects)
+        painter.setRenderHint(QPainter.Antialiasing)
         if not selected:
             pen = QPen(Qt.green)
         if selected:
@@ -885,15 +1084,19 @@ class WindowClass(QMainWindow, form_class):
         font = QFont()
         font.setFamily('Times')
         font.setBold(True)
-        font.setPointSize(10)
+        font.setPointSize(round(10))
         painter.setFont(font)
 
         x, y, w, h = geometry
         if ch != 'RTSP_1' and ch != 'RTSP_2' and ch != 'RTSP_3':
             rect = QRect(x, y, w, h)
             painter.drawRect(rect)
-        #painter.drawText(QRect(round((w)/2+x-17), round((h/2)+y+5),80,80),Qt.AlignCenter|Qt.TextWordWrap ,text+"\n이야야야야야")  # rect 위에 key 값을 글자로 씀
-        painter.drawText(QRect(x+10,y+10,w,h),Qt.TextWordWrap, text)  # rect 위에 key 값을 글자로 씀
+
+        if self.isABS[ch]: # onABS
+            painter.drawText(QRect(x+10,y+10,w,h),Qt.TextWordWrap, text+'\nABS')  # rect 위에 key 값을 글자로 씀
+        if not self.isABS[ch]: # offABS
+            painter.drawText(QRect(x + 10, y + 10, w, h), Qt.TextWordWrap, text)  # rect 위에 key 값을 글자로 씀
+
         painter.end()
 
         return pixmap_with_rects
@@ -913,6 +1116,7 @@ class WindowClass(QMainWindow, form_class):
         if name == 'first':
             ch_frame[0] = pixmap
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
+
             if crop_frame_count % round(video_fps/monit_fps) == 0:
                 crop_frame = main_frame.copy()
 
@@ -922,6 +1126,7 @@ class WindowClass(QMainWindow, form_class):
                 try:
                     if i == 'RTSP_2' or i == 'RTSP_3':
                         continue
+
                     if self.ch_rect[i] != None and self.ch_rect[i][4] == 'RTSP_1':
                         x,y,w,h = self.ch_rect[i][:4]
                         witdh_rate = self.main_screen_width/self.ch_rect['RTSP_1'][2]
