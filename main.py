@@ -19,6 +19,12 @@ import requests
 global main1_frame
 global main2_frame
 global main3_frame
+global selected_main1
+global selected_main2
+global selected_main3
+selected_main1 = False
+selected_main2 = False
+selected_main3 = False
 main1_frame = None
 main2_frame = None
 main3_frame = None
@@ -132,7 +138,7 @@ class rtsp_worker(QThread):
             crop_frame_count = 1
 
             while cap.isOpened() and self.working:
-                start =time.time()
+
                 ret, frame = cap.read()
 
                 if not ret:
@@ -153,6 +159,7 @@ class rtsp_worker(QThread):
                 if self.name == 'first':
                     self.msleep(int(Config.config['PROGRAM']['msleep_rtsp1']))
                     self.update_frame.emit(frame, self.name, crop_frame_count)
+
                 if self.name == 'second':
                     self.msleep(int(Config.config['PROGRAM']['msleep_rtsp2']))
                     self.update_frame.emit(frame, self.name, crop_frame_count)
@@ -829,6 +836,7 @@ class WindowClass(QMainWindow, form_class):
             painter.end()
 
         self.monit_class.monit_label.setPixmap(pixmap)
+
     def setStrikeZone(self,qimage):
         painter = QPainter(qimage)
         painter.setOpacity(0.6)
@@ -918,6 +926,9 @@ class WindowClass(QMainWindow, form_class):
         def handle_channel_key(channel, channel_rect, isABS):
             #global isClose
             #while channel_rect != None:
+            global selected_main1
+            global selected_main2
+            global selected_main3
             if channel_rect != None:
                 try:
                     for i in self.channel_list:
@@ -930,30 +941,48 @@ class WindowClass(QMainWindow, form_class):
                     #    break
                     if channel_rect[4] == 'RTSP_1':
                         if self.monit_thread == None:
+                            selected_main1 = True
+                            selected_main2 = False
+                            selected_main3 = False
                             self.monit_thread = MonitThread(channel_rect=channel_rect,ch='RTSP_1',isABS=isABS)
                             self.monit_thread.update_monit_frame.connect(self.update_monit_frame)
                             self.monit_thread.start()
                         if self.monit_thread != None:
+                            selected_main1 = True
+                            selected_main2 = False
+                            selected_main3 = False
                             self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_1',isABS=isABS)
 
                         #self.monit_class.monit_label.setPixmap(ch_frame[0].copy(channel_rect[0],channel_rect[1],channel_rect[2],channel_rect[3]).scaled(1280,720))
 
                     if channel_rect[4] == 'RTSP_2':
                         if self.monit_thread == None:
+                            selected_main1 = False
+                            selected_main2 = True
+                            selected_main3 = False
                             self.monit_thread = MonitThread(channel_rect=channel_rect, ch='RTSP_2',isABS=isABS)
                             self.monit_thread.update_monit_frame.connect(self.update_monit_frame)
                             print('MonitTrhead Start')
                             self.monit_thread.start()
                         if self.monit_thread != None:
+                            selected_main1 = False
+                            selected_main2 = True
+                            selected_main3 = False
                             self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_2',isABS=isABS)
                         #self.monit_class.monit_label.setPixmap(ch_frame[1].copy(channel_rect[0], channel_rect[1], channel_rect[2], channel_rect[3]).scaled(1280,720))
 
                     if channel_rect[4] == 'RTSP_3':
                         if self.monit_thread == None:
+                            selected_main1 = False
+                            selected_main2 = False
+                            selected_main3 = True
                             self.monit_thread = MonitThread(channel_rect=channel_rect, ch='RTSP_3',isABS=isABS)
                             self.monit_thread.update_monit_frame.connect(self.update_monit_frame)
                             self.monit_thread.start()
                         if self.monit_thread != None:
+                            selected_main1 = False
+                            selected_main2 = False
+                            selected_main3 = True
                             self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_3',isABS=isABS)
                         #self.monit_class.monit_label.setPixmap(ch_frame[1].copy(channel_rect[0], channel_rect[1], channel_rect[2], channel_rect[3]).scaled(1280,720))
                     #opencv_key = cv2.waitKey(1)
@@ -1142,14 +1171,20 @@ class WindowClass(QMainWindow, form_class):
         global main3_frame
         global video_fps
         global monit_fps
-
+        global selected_main1
+        global selected_main2
+        global selected_main3
+        self.main_monit_limit = int(Config.config['PROGRAM']['main_monit_testing'])
         # TODO : 전달받은 opencv 영상을 pixmap으로 변환 ( 원본 )
         h, w, c = frame.shape
         qImg = QImage(frame.data, w, h, w * c, QImage.Format.Format_BGR888)
         pixmap = QPixmap.fromImage(qImg)
         crop_frame = None
         if name == 'first':
-            main1_frame = pixmap
+            if selected_main1 == True or main1_frame == None:
+                main1_frame = pixmap
+            if crop_frame_count % self.main_monit_limit != 0:
+                return
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
 
             if crop_frame_count % round(video_fps/monit_fps) == 0:
@@ -1172,6 +1207,7 @@ class WindowClass(QMainWindow, form_class):
                         w = round(w*witdh_rate)
                         h = round(h*height_rate)
                         main_frame = self.draw_crop_rect(frame=main_frame, geometry=(x, y, w, h),text=f'{i}\n{self.ch_rect[i][2]}x{self.ch_rect[i][3]}',ch=i,selected=self.ch_rect[i][5]).copy()
+
                         if crop_frame_count % round(video_fps/monit_fps) != 0 or crop_frame == None:
                             continue
                         elif i == 'ch1':
@@ -1205,7 +1241,11 @@ class WindowClass(QMainWindow, form_class):
 
 
         if name == 'second':
-            main2_frame = pixmap
+            if selected_main2 == True or main2_frame == None:
+                main2_frame = pixmap
+            if crop_frame_count % self.main_monit_limit != 0:
+                return
+
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
             if crop_frame_count % round(video_fps/monit_fps) == 0:
                 crop_frame = main_frame.copy()
@@ -1254,7 +1294,10 @@ class WindowClass(QMainWindow, form_class):
             #self.main2.setPixmap(main_frame.scaled(self.main_screen_width, self.main_screen_height))
 
         if name == 'third':
-            main3_frame = pixmap
+            if selected_main3 == True or main3_frame == None:
+                main3_frame = pixmap
+            if crop_frame_count % self.main_monit_limit != 0:
+                return
             main_frame = pixmap.scaled(self.main_screen_width,self.main_screen_height)
             if crop_frame_count % round(video_fps/monit_fps) == 0:
                 crop_frame = main_frame.copy()
@@ -1302,6 +1345,7 @@ class WindowClass(QMainWindow, form_class):
                     continue
             self.main3.setPixmap(main_frame)
             #self.main2.setPixmap(main_frame.scaled(self.main_screen_width, self.main_screen_height))
+
 
 
 
