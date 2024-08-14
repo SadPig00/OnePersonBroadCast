@@ -150,9 +150,12 @@ class rtsp_worker(QThread):
                     crop_frame_count = 1
 
                 self.update_frame.emit(frame, self.name,crop_frame_count)
-
-                #QThread.msleep(1)
-
+                if self.name == 'first':
+                    QThread.msleep(int(Config.config['PROGRAM']['msleep_rtsp1']))
+                if self.name == 'second':
+                    QThread.msleep(int(Config.config['PROGRAM']['msleep_rtsp2']))
+                if self.name == 'third':
+                    QThread.msleep(int(Config.config['PROGRAM']['msleep_rtsp3']))
 
             cap.release()
         except Exception as e:
