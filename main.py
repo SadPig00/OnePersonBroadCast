@@ -132,7 +132,7 @@ class rtsp_worker(QThread):
             crop_frame_count = 1
 
             while cap.isOpened() and self.working:
-
+                start =time.time()
                 ret, frame = cap.read()
 
                 if not ret:
@@ -149,13 +149,16 @@ class rtsp_worker(QThread):
                 if crop_frame_count == video_fps+1:
                     crop_frame_count = 1
 
-                self.update_frame.emit(frame, self.name,crop_frame_count)
+                #self.update_frame.emit(frame, self.name, crop_frame_count)
                 if self.name == 'first':
                     self.msleep(int(Config.config['PROGRAM']['msleep_rtsp1']))
+                    self.update_frame.emit(frame, self.name, crop_frame_count)
                 if self.name == 'second':
                     self.msleep(int(Config.config['PROGRAM']['msleep_rtsp2']))
+                    self.update_frame.emit(frame, self.name, crop_frame_count)
                 if self.name == 'third':
                     self.msleep(int(Config.config['PROGRAM']['msleep_rtsp3']))
+                    self.update_frame.emit(frame, self.name, crop_frame_count)
 
             cap.release()
         except Exception as e:
@@ -273,6 +276,8 @@ class MonitThread(QThread):
 
         while self.working:
 
+            self.msleep(int(Config.config['PROGRAM']['monit_msleep']))
+
             if self.ch == 'RTSP_1':
                 frame = main1_frame.copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2], self.channel_rect[3]).scaled(config_width,config_height)
             if self.ch == 'RTSP_2':
@@ -284,7 +289,9 @@ class MonitThread(QThread):
 
             self.update_monit_frame.emit(frame,self.isABS)
 
-            self.msleep(1)
+            #self.msleep(round(1000/int(Config.config['PROGRAM']['video_fps'])+5))
+
+
     def change_channel_rect(self,channel_rect,ch, isABS):
         self.channel_rect = channel_rect
         self.ch = ch
@@ -935,6 +942,7 @@ class WindowClass(QMainWindow, form_class):
                         if self.monit_thread == None:
                             self.monit_thread = MonitThread(channel_rect=channel_rect, ch='RTSP_2',isABS=isABS)
                             self.monit_thread.update_monit_frame.connect(self.update_monit_frame)
+                            print('MonitTrhead Start')
                             self.monit_thread.start()
                         if self.monit_thread != None:
                             self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_2',isABS=isABS)
@@ -1127,6 +1135,7 @@ class WindowClass(QMainWindow, form_class):
     # TODO : main1, main2 화면에 출력 ( Rect ) signal 받는 slot 함수
     @pyqtSlot(np.ndarray, str, int)
     def update_frame(self, frame, name, crop_frame_count):
+
         #global ch_frame
         global main1_frame
         global main2_frame
@@ -1154,6 +1163,7 @@ class WindowClass(QMainWindow, form_class):
                         continue
 
                     if self.ch_rect[i] != None and self.ch_rect[i][4] == 'RTSP_1':
+
                         x,y,w,h = self.ch_rect[i][:4]
                         witdh_rate = self.main_screen_width/self.ch_rect['RTSP_1'][2]
                         height_rate = self.main_screen_height/self.ch_rect['RTSP_1'][3]
