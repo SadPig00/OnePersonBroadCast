@@ -61,7 +61,7 @@ class GetPitchInfo(QThread):
                         if 'box_bottom' in data.keys():
                             # TODO : 공 좌표 받은 이후 4초간 데이터 변동 없으면 좌표 표출 X
                             if data != pitch_temp:
-                                QThread.msleep(int(Config.config['ABS']['mtime_delay'])) # RTSP 서버와의 딜레이 조정
+                                self.msleep(int(Config.config['ABS']['mtime_delay'])) # RTSP 서버와의 딜레이 조정
                                 pitchInfo = data
                                 pitch_temp = data
                                 abs_start_time = time.time()
@@ -72,7 +72,7 @@ class GetPitchInfo(QThread):
                         if 'error' in data.keys():
                             pitchInfo = None
                         break
-                QThread.msleep(100)
+                self.msleep(100)
             except Exception as e:
                 pitchInfo = None
                 print(f"request fail :: {e}")
@@ -151,11 +151,11 @@ class rtsp_worker(QThread):
 
                 self.update_frame.emit(frame, self.name,crop_frame_count)
                 if self.name == 'first':
-                    QThread.msleep(int(Config.config['PROGRAM']['msleep_rtsp1']))
+                    self.msleep(int(Config.config['PROGRAM']['msleep_rtsp1']))
                 if self.name == 'second':
-                    QThread.msleep(int(Config.config['PROGRAM']['msleep_rtsp2']))
+                    self.msleep(int(Config.config['PROGRAM']['msleep_rtsp2']))
                 if self.name == 'third':
-                    QThread.msleep(int(Config.config['PROGRAM']['msleep_rtsp3']))
+                    self.msleep(int(Config.config['PROGRAM']['msleep_rtsp3']))
 
             cap.release()
         except Exception as e:
@@ -284,7 +284,7 @@ class MonitThread(QThread):
 
             self.update_monit_frame.emit(frame,self.isABS)
 
-            QThread.msleep(1)
+            self.msleep(1)
     def change_channel_rect(self,channel_rect,ch, isABS):
         self.channel_rect = channel_rect
         self.ch = ch
