@@ -1,3 +1,4 @@
+import json
 import time
 import numpy as np
 import cv2
@@ -14,6 +15,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import requests
+import ast
 
 #global ch_frame
 global main1_frame
@@ -439,6 +441,14 @@ class WindowClass(QMainWindow, form_class):
         elif self.rtsp_num == 3:
             self.ch_rect = {'RTSP_1': None, 'RTSP_2': None, 'RTSP_3': None, 'ch1': None, 'ch2': None, 'ch3': None, 'ch4': None,
                             'ch5': None, 'ch6': None, 'ch7': None, 'ch8': None, 'ch9': None, 'ch10':None}
+        for i in Config.config['PIP'].items():
+            if i[1] != "None":
+                value = i[1]
+                if value.find('false') != -1:
+                    value = i[1].replace('false','False')
+                if value.find('true') != -1:
+                    value = i[1].replace('true', 'True')
+                self.ch_rect[i[0]] = eval(value)
 
         # TODO : RTSP에서 들어오는 이미지의 비율은 16:9 비율로 특정, 이미지 크기가 커지면 PIP 화면 크롭시 화면에 가득찰수가 있어서 1280x720으로 변환 해주기 위한 resize 필요
         # TODO : 해당 resize시 원본과 resize된 비율을 가지고 있어야됨.
@@ -748,6 +758,9 @@ class WindowClass(QMainWindow, form_class):
             height_rate = self.ch_rect['RTSP_3'][3] / self.crop_ch_rect['RTSP_3'][1]
             self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_3',False]
 
+        # TODO : config 저장 ( ch )
+        Config.config['PIP'][ch] = json.dumps(self.ch_rect[ch])
+
         ##########################################
         """
         for i in self.crop_update_thread.keys():
@@ -880,6 +893,8 @@ class WindowClass(QMainWindow, form_class):
             main3_frame = None
             #isClose = True
             #cv2.destroyAllWindows()
+            with open(Config.config_path, 'w', encoding='utf-8') as configfile:
+                Config.config.write(configfile)
             event.accept()
 
         else:
@@ -1126,7 +1141,7 @@ class WindowClass(QMainWindow, form_class):
             self.ch9.setPixmap(self.sub_noSignalImage)
         elif ch == 'ch10':
             self.ch10.setPixmap(self.sub_noSignalImage)
-
+        Config.config['PIP'][ch] = 'None'
 
     def draw_crop_rect(self,frame,geometry,text,ch,selected):
 
