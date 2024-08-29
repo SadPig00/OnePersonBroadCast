@@ -5,6 +5,7 @@ from PyQt5.QtGui import *
 import cv2
 import sys,os
 import Config
+import math
 isExe = Config.config['PROGRAM']['isExe'] == 'true'
 
 if isExe:
@@ -14,7 +15,7 @@ if not isExe:
 
 class Set_Channel_Dialog(QDialog, form_class):
     # TODO : main UI에 좌표를 전달하는 signal
-    get_rectangle_signal = pyqtSignal(str, str, list)
+    get_rectangle_signal = pyqtSignal(str, str, list, int)
 
     def __init__(self, frame, rtsp_name,origin_width):
         super().__init__()
@@ -42,26 +43,29 @@ class Set_Channel_Dialog(QDialog, form_class):
         self.rect_width = round(self.rect_height * (16/9))
 
         self.rtsp_image.mousePressEvent = self.mousePressEvent
+        self.rtsp_image.mouseMoveEvent = self.mouseMoveEvent
         self.rtsp_image.wheelEvent = self.wheelEvent
 
         self.buttonBox.accepted.connect(self.emit_rectangle_signal)
         self.buttonBox.rejected.connect(self.reject)
 
-    def draw_rectangle(self, center_point):
+        self.diff_y = 0
+        self.center_point = QPoint(0,0)
+    def draw_rectangle(self):
         self.clear_rectangle()
 
         half_width = round(self.rect_width / 2)
         half_height = round(self.rect_height / 2)
-        top_left = QPoint(center_point.x() - half_width, center_point.y() - half_height)
-        bottom_right = QPoint(center_point.x() + half_width, center_point.y() + half_height)
+        top_left = QPoint(self.center_point.x() - half_width, self.center_point.y() - half_height)
+        bottom_right = QPoint(self.center_point.x() + half_width, self.center_point.y() + half_height)
 
         if self.forceSize and self.frame_width >= 1280:
             self.rect_width = round(1280* (self.frame_width/self.origin_width))
             self.rect_height = round(720*(self.frame_width/self.origin_width))
             half_width = round(self.rect_width / 2)
             half_height = round(self.rect_height / 2)
-            top_left = QPoint(center_point.x() - half_width, center_point.y() - half_height)
-            bottom_right = QPoint(center_point.x() + half_width, center_point.y() + half_height)
+            self.top_left = QPoint(self.center_point.x() - half_width, self.center_point.y() - half_height)
+            self.bottom_right = QPoint(self.center_point.x() + half_width, self.center_point.y() + half_height)
 
         if self.forceSize and self.frame_width < 1280:
             QMessageBox.about(self, "Set Channel", "This image width under 1280")
@@ -80,20 +84,45 @@ class Set_Channel_Dialog(QDialog, form_class):
             top_left.setY(self.frame_height - self.rect_height)
 
         self.rect_start_point = top_left
+        """
         painter = QPainter(self.pixmap)
         painter.setPen(QPen(Qt.green, 2, Qt.SolidLine))
+
 
         rect = QRect(self.rect_start_point, QSize(self.rect_width, self.rect_height))
         painter.drawRect(rect)
 
         font = QFont()
-        font.setFamily('Times')
+        font.setFamily('Arial')
         font.setBold(True)
         font.setPointSize(15)
         painter.setFont(font)
         painter.drawText(QRect(self.rect_start_point.x() + 10, self.rect_start_point.y() + 10, self.rect_width,self.rect_height), Qt.TextWordWrap,f'{round(self.rect_width * self.origin_width_rate)} x {round(self.rect_height * self.origin_width_rate)}')  # rect 위에 key 값을 글자로 씀
         painter.end()
+        """
+        painter = QPainter(self.pixmap)
 
+        center_x = self.rect_start_point.x() + self.rect_width / 2
+        center_y = self.rect_start_point.y() + self.rect_height / 2
+
+        painter.translate(center_x, center_y)  # 중심점으로 이동
+        painter.rotate(self.diff_y)  # 회전
+        painter.translate(-center_x, -center_y)  # 원래 위치로 이동
+
+        painter.setPen(QPen(Qt.green, 2, Qt.SolidLine))
+        rect = QRect(self.rect_start_point, QSize(self.rect_width, self.rect_height))
+
+        painter.drawRect(rect)
+
+        font = QFont()
+        font.setFamily('Arial')
+        font.setBold(True)
+        font.setPointSize(15)
+        painter.setFont(font)
+        painter.drawText(QRect(self.rect_start_point.x() + 10, self.rect_start_point.y() + 10, self.rect_width,
+                               self.rect_height), Qt.TextWordWrap,
+                         f'{round(self.rect_width * self.origin_width_rate)} x {round(self.rect_height * self.origin_width_rate)}')  # rect 위에 key 값을 글자로 씀
+        painter.end()
         self.rtsp_image.setPixmap(self.pixmap)
 
     def clear_rectangle(self):
@@ -107,10 +136,68 @@ class Set_Channel_Dialog(QDialog, form_class):
             self.forceSize = True
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self.frame_width > event.pos().x() > 0 and self.frame_height > event.pos().y() > 0:
-            self.draw_rectangle(event.pos())
+            self.diff_y = 0
+            self.center_point = event.pos()
+            self.draw_rectangle()
+        if event.button() == Qt.RightButton and self.frame_width > event.pos().x() > 0 and self.frame_height > event.pos().y() > 0:
+            self.prev_y = None
+    def mouseMoveEvent(self,event):
+        if event.buttons() == Qt.MouseButton.LeftButton and self.frame_width > event.pos().x() > 0 and self.frame_height > event.pos().y() > 0:
+            self.center_point = event.pos()
+            self.draw_rectangle()
+        if event.buttons() == Qt.MouseButton.RightButton and self.frame_width > event.pos().x() > 0 and self.frame_height > event.pos().y() > 0:
+            if self.rect_start_point != None:
+                if self.prev_y != None:
+                    if self.prev_y - event.pos().y() > 0 and self.diff_y > -90:
+                        self.diff_y += -1
+                        rotated_point = self.get_rotate_point()
+                        if rotated_point[0].x() < 0 or rotated_point[0].y() < 0 or rotated_point[1].x() > self.frame_width or rotated_point[1].y() < 0 or rotated_point[2].x() < 0 or rotated_point[2].y() > self.frame_height or rotated_point[3].x() > self.frame_width or rotated_point[3].y() > self.frame_height:
+                            self.diff_y += +1
+
+                    if self.prev_y - event.pos().y() < 0 and self.diff_y < 90:
+                        rotated_point = self.get_rotate_point()
+                        self.diff_y += 1
+                        rotated_point = self.get_rotate_point()
+                        if rotated_point[0].x() < 0 or rotated_point[0].y() < 0 or rotated_point[1].x() > self.frame_width or rotated_point[1].y() < 0 or rotated_point[2].x() < 0 or rotated_point[2].y() > self.frame_height or rotated_point[3].x() > self.frame_width or rotated_point[3].y() > self.frame_height:
+                            self.diff_y += -1
+                    self.prev_y = None
+                if self.prev_y == None:
+                    self.prev_y = event.pos().y()
+
+                self.draw_rectangle()
+
+    # 회전 변환 함수
+    def rotate_point(self,point, center, angle):
+        x_new = (point.x() - center.x()) * math.cos(angle) - (point.y() - center.y()) * math.sin(angle) + center.x()
+        y_new = (point.x() - center.x()) * math.sin(angle) + (point.y() - center.y()) * math.cos(angle) + center.y()
+        return QPoint(round(x_new), round(y_new))
+
+    def get_rotate_point(self):
+        # 사각형의 중심점 계산
+        center_x = round(self.rect_start_point.x() + self.rect_width / 2)
+        center_y = round(self.rect_start_point.y() + self.rect_height / 2)
+
+        # 각 꼭짓점의 원래 좌표 계산
+        top_left = QPoint(self.rect_start_point.x(), self.rect_start_point.y())
+        top_right = QPoint(self.rect_start_point.x() + self.rect_width, self.rect_start_point.y())
+        bottom_left = QPoint(self.rect_start_point.x(), self.rect_start_point.y() + self.rect_height)
+        bottom_right = QPoint(self.rect_start_point.x() + self.rect_width,
+                              self.rect_start_point.y() + self.rect_height)
+
+        # 회전 각도 (radian 단위로 변환)
+        angle_rad = math.radians(self.diff_y)
+
+        # 각 꼭짓점 회전
+        rotated_top_left = self.rotate_point(top_left, QPoint(center_x, center_y), angle_rad)
+        rotated_top_right = self.rotate_point(top_right, QPoint(center_x, center_y), angle_rad)
+        rotated_bottom_left = self.rotate_point(bottom_left, QPoint(center_x, center_y), angle_rad)
+        rotated_bottom_right = self.rotate_point(bottom_right, QPoint(center_x, center_y), angle_rad)
+
+        return [rotated_top_left,rotated_top_right,rotated_bottom_left,rotated_bottom_right]
 
     def wheelEvent(self, event):
         if not self.forceSize:
+            self.diff_y = 0
             delta = event.angleDelta().y() // 120  # Typical wheel step is 120
             change_w = delta * 16
             change_h = delta * 9
@@ -123,11 +210,12 @@ class Set_Channel_Dialog(QDialog, form_class):
                 self.rect_height = new_height
 
             if self.rect_start_point is None:
-                center_point = QPoint(self.frame_width // 2, self.frame_height // 2)
+                self.center_point = QPoint(self.frame_width // 2, self.frame_height // 2)
             else:
-                center_point = self.rect_start_point + QPoint(self.rect_width // 2, self.rect_height // 2)
+                self.center_point = self.rect_start_point + QPoint(self.rect_width // 2, self.rect_height // 2)
 
-            self.draw_rectangle(center_point)
+
+            self.draw_rectangle()
         event.accept()
 
     def emit_rectangle_signal(self):
@@ -136,5 +224,5 @@ class Set_Channel_Dialog(QDialog, form_class):
         if self.rect_start_point is None:
             return
         rect_point = [self.rect_start_point.x(), self.rect_start_point.y(), self.rect_width, self.rect_height]
-        self.get_rectangle_signal.emit(selected_ch, self.rtsp_name, rect_point)
+        self.get_rectangle_signal.emit(selected_ch, self.rtsp_name, rect_point,self.diff_y)
         self.accept()
