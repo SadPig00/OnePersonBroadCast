@@ -22,7 +22,6 @@ class RTSP_dialog(QDialog, form_class):
         self.server_num = server_num
         self.setWindowTitle(self.server_num)
 
-
         self.first_rtsp = Config.config['RTSP']['first_rtsp']
         self.second_rtsp = Config.config['RTSP']['second_rtsp']
         self.third_rtsp = Config.config['RTSP']['third_rtsp']
