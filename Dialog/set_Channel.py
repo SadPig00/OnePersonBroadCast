@@ -1,3 +1,5 @@
+import time
+
 from PyQt5 import uic
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -6,6 +8,7 @@ import cv2
 import sys,os
 import Config
 import math
+
 try:
     isExe = Config.config['PROGRAM']['isExe'] == 'true'
 
@@ -17,17 +20,13 @@ except Exception as e:
     print(f"set Channel ixExe Error :: {e}")
 
 class Set_Channel_Dialog(QDialog, form_class):
-    try:
-        # TODO : main UI에 좌표를 전달하는 signal
-        get_rectangle_signal = pyqtSignal(str, str, list, int)
-    except Exception as e:
-        print(f"get_rectangle_signal Error :: {e}")
+    # TODO : main UI에 좌표를 전달하는 signal
+    get_rectangle_signal = pyqtSignal(str, str, list, int)
 
     def __init__(self, frame, rtsp_name,origin_width):
         try:
             super().__init__()
             self.setupUi(self)
-
             self.frame = frame
             self.rtsp_name = rtsp_name
             self.setWindowTitle(self.rtsp_name)
@@ -58,6 +57,7 @@ class Set_Channel_Dialog(QDialog, form_class):
 
             self.diff_y = 0
             self.center_point = QPoint(0,0)
+
 
         except Exception as e:
             print(f"set Channel init Error :: {e}")
