@@ -6,6 +6,7 @@ import tkinter
 import sys, os
 import Config
 import threading
+import subprocess
 
 from Dialog import rtsp_dialog
 from Dialog import set_Channel
@@ -18,7 +19,7 @@ from Functions.get_rotate_points import get_rotate_point
 import requests
 import ast
 
-#global ch_frame
+# global ch_frame
 global main1_frame
 global main2_frame
 global main3_frame
@@ -30,8 +31,8 @@ global start_rtsp1
 global start_rtsp2
 global start_rtsp3
 
-#global isCrop
-#isCrop = False
+# global isCrop
+# isCrop = False
 global frame_mutex
 
 frame_mutex = QMutex()
@@ -51,24 +52,26 @@ main3_frame = None
 global pitchInfo
 global config_width
 global config_height
-global video_fps
+#global video_fps
 global monit_fps
 
 config_width = int(Config.config['PROGRAM']['width'])
-config_height  = int(Config.config['PROGRAM']['height'])
-video_fps = int(Config.config['PROGRAM']['video_fps'])
-monit_fps = int(Config.config['PROGRAM']['monit_fps'])
+config_height = int(Config.config['PROGRAM']['height'])
+#video_fps = int(Config.config['PROGRAM']['video_fps'])
+monit_fps = int(Config.config['PROGRAM']['sub_monit_fps'])
 
 pitchInfo = None
 global isExe
 isExe = Config.config['PROGRAM']['isExe'] == 'true'
 
+
 # TODO : ABS 서버에서 스트라이크 좌표 가져오는 쓰레드 함수
 class GetPitchInfo(QThread):
-    def __init__(self,parent):
+    def __init__(self, parent):
         super().__init__()
         self.working = True
         self.parent = parent
+
     def run(self):
         global pitchInfo
         pitch_temp = None
@@ -83,7 +86,7 @@ class GetPitchInfo(QThread):
                         if 'box_bottom' in data.keys():
                             # TODO : 공 좌표 받은 이후 4초간 데이터 변동 없으면 좌표 표출 X
                             if data != pitch_temp:
-                                self.msleep(int(Config.config['ABS']['mtime_delay'])) # RTSP 서버와의 딜레이 조정
+                                self.msleep(int(Config.config['ABS']['mtime_delay']))  # RTSP 서버와의 딜레이 조정
                                 pitchInfo = data
                                 pitch_temp = data
                                 abs_start_time = time.time()
@@ -104,6 +107,7 @@ class GetPitchInfo(QThread):
         self.quit()
         self.wait(2000)
 
+
 # TODO : 좌표 알아내는 핸들러 (현재 미사용)
 def mouse_handler(event, x, y, flags, param):  # 마우스로 좌표 알아내기
     if flags == cv2.EVENT_FLAG_LBUTTON:
@@ -114,7 +118,8 @@ def mouse_handler(event, x, y, flags, param):  # 마우스로 좌표 알아내�
 
         heigt, width, _ = param.shape
 
-        if x - int(width / 8) > 0 and x + int(width / 8) <= 1280 and y - int(heigt / 8) > 0 and y + int(heigt / 8) <= 720:
+        if x - int(width / 8) > 0 and x + int(width / 8) <= 1280 and y - int(heigt / 8) > 0 and y + int(
+                heigt / 8) <= 720:
             crop_x = x
             crop_y = y
 
@@ -128,9 +133,10 @@ class rtsp_worker(QThread):
         self.url = url
         self.name = name
         self.working = True
+        self.cap = False
 
     def run(self):
-        global video_fps
+        #global video_fps
         global start_rtsp1
         global start_rtsp2
         global start_rtsp3
@@ -142,13 +148,13 @@ class rtsp_worker(QThread):
         global selected_main2
         global selected_main3
 
-
-        #global isCrop
+        # global isCrop
         try:
-            self.main_monit_limit = int(Config.config['PROGRAM']['main_monit_testing'])
-            cap = cv2.VideoCapture(self.url)
+            self.main_monit_limit = int(Config.config['PROGRAM']['main_monit_fps'])
+            self.cap = cv2.VideoCapture(self.url)
             frame_count = 0
             crop_frame_count = 1
+            fps = self.cap.get(cv2.CAP_PROP_FPS)
 
             if self.name == 'first':
                 start_rtsp1 = False
@@ -159,15 +165,27 @@ class rtsp_worker(QThread):
 
             global frame_mutex
 
-            while cap.isOpened() and self.working:
+            while self.cap.isOpened() and self.working:
+                """
+                if self.name == 'first' and selected_main1 == False:
+                    if (time.time()-fps_start) < (60/self.main_monit_limit/60):
+                        continue
+                if self.name == 'second' and selected_main2 == False:
+                    if (time.time()-fps_start) < (60/self.main_monit_limit/60):
+                        continue
+                if self.name == 'third' and selected_main3 == False:
+                    if (time.time()-fps_start) < (60/self.main_monit_limit/60):
+                        continue
+                """
 
-                ret, frame = cap.read()
+                ret, frame = self.cap.read()
 
                 if not ret:
-                    # TODO : 인터넷 속도 문제로 RTSP 서버 끊겼을시 재접속
+                    # TODO : RTSP 접속 이후 return 반환이 안될때
                     frame_count += 1
-                    if frame_count == 1000:
-                        cap = cv2.VideoCapture(self.url)
+                    self.msleep(1000)
+                    if frame_count == 5:
+                        self.cap = cv2.VideoCapture(self.url)
                         frame_count = 0
                         crop_frame_count = 1
                         if self.name == 'first':
@@ -178,40 +196,42 @@ class rtsp_worker(QThread):
                             start_rtsp3 = False
 
                     continue
-
+                frame_count = 0
                 crop_frame_count += 1
-                if crop_frame_count == video_fps+1:
+                if crop_frame_count > fps:
                     crop_frame_count = 1
-
 
                 crop_frame = None
 
                 if self.name == 'first':
                     try:
-                        #if not start_rtsp1:
-                        if not start_rtsp1 and crop_frame_count % round(30/monit_fps) == 0:
+                        # if not start_rtsp1:
+                        if not start_rtsp1 and crop_frame_count % round(fps / monit_fps) == 0:
                             h, w, c = frame.shape
                             qImg = QImage(frame.data, w, h, w * c, QImage.Format.Format_BGR888)
                             pixmap = QPixmap.fromImage(qImg)
 
                             width_rate = self.parent.main_screen_width / w
                             height_rate = self.parent.main_screen_height / h
-                            
-                            resize_image = pixmap.scaled(self.parent.main_screen_width, self.parent.main_screen_height)
 
+                            resize_image = pixmap.scaled(self.parent.main_screen_width, self.parent.main_screen_height)
 
                             for i in self.parent.ch_rect.keys():
                                 if self.parent.ch_rect[i] != None and self.parent.ch_rect[i][4] == 'RTSP_1':
                                     # TODO : 초기 crop 화면을 이미지로 넣기 위한 전처리
                                     if i == 'ch1':
-                                        if self.parent.ch_rect[i][6] != 0 :
-                                            self.parent.ch1.setPixmap(self.parent.get_rotate_image(i,resize_image,width_rate,height_rate,self.parent.sub_screen_width, self.parent.sub_screen_height))
+                                        if self.parent.ch_rect[i][6] != 0:
+                                            self.parent.ch1.setPixmap(
+                                                self.parent.get_rotate_image(i, resize_image, width_rate, height_rate,
+                                                                             self.parent.sub_screen_width,
+                                                                             self.parent.sub_screen_height))
                                         else:
                                             self.parent.ch1.setPixmap(
                                                 resize_image.copy(round(self.parent.ch_rect[i][0] * width_rate),
                                                                   round(self.parent.ch_rect[i][1] * height_rate),
                                                                   round(self.parent.ch_rect[i][2] * width_rate),
-                                                                  round(self.parent.ch_rect[i][3] * height_rate)).scaled(
+                                                                  round(
+                                                                      self.parent.ch_rect[i][3] * height_rate)).scaled(
                                                     self.parent.sub_screen_width, self.parent.sub_screen_height))
 
                                     elif i == 'ch2':
@@ -341,33 +361,30 @@ class rtsp_worker(QThread):
                                                                       self.parent.ch_rect[i][3] * height_rate)).scaled(
                                                     self.parent.sub_screen_width, self.parent.sub_screen_height))
                             if Config.config['PROGRAM']['iscrop_move'] != 'true':
-                                  start_rtsp1 = True
+                                start_rtsp1 = True
                     except Exception as e:
                         print(f"초기 crop 이미지 오류 :: {e}")
                     try:
 
-                        if selected_main1 == True or main1_frame == None:# or isCrop:
+                        if selected_main1 == True or main1_frame == None:  # or isCrop:
                             h, w, c = frame.shape
                             qImg = QImage(frame.data, w, h, w * c, QImage.Format.Format_BGR888)
                             pixmap = QPixmap.fromImage(qImg)
-                            #frame_mutex.lock()
+                            # frame_mutex.lock()
                             main1_frame = pixmap
-                            #isCrop = False
-                            #frame_mutex.unlock()
+                            # isCrop = False
+                            # frame_mutex.unlock()
 
-                        if crop_frame_count % round(30/self.main_monit_limit) != 0:
+                        if crop_frame_count % round(fps / self.main_monit_limit) != 0:
                             self.msleep(1)
                             continue
-
 
                         if selected_main1 != True:
                             h, w, c = frame.shape
                             qImg = QImage(frame.data, w, h, w * c, QImage.Format.Format_BGR888)
                             pixmap = QPixmap.fromImage(qImg)
 
-
                         main_frame = pixmap.scaled(self.parent.main_screen_width, self.parent.main_screen_height)
-
 
                         # if crop_frame_count % round(video_fps/monit_fps) == 0:
                         #    crop_frame = main_frame.copy()
@@ -418,21 +435,20 @@ class rtsp_worker(QThread):
                             except Exception as e:
                                 print(f"draw_rect_errorr :: {e}")
                                 continue
-                        #frame_mutex.lock()
+                        # frame_mutex.lock()
 
                         self.parent.main1.setPixmap(main_frame)
-                        #frame_mutex.unlock()
+                        # frame_mutex.unlock()
                         # self.main1.setPixmap(main_frame.scaled(self.main_screen_width, self.main_screen_height))
                     except Exception as e:
                         print(f"setPixmap main errer :: {e}")
                     self.msleep(int(Config.config['PROGRAM']['msleep_rtsp1']))
-                    #self.update_frame.emit(frame, self.name, crop_frame_count)
-
+                    # self.update_frame.emit(frame, self.name, crop_frame_count)
 
                 if self.name == 'second':
                     try:
-                        #if not start_rtsp2:
-                        if not start_rtsp2 and crop_frame_count % round(30/monit_fps) == 0:
+                        # if not start_rtsp2:
+                        if not start_rtsp2 and crop_frame_count % round(fps / monit_fps) == 0:
                             h, w, c = frame.shape
                             qImg = QImage(frame.data, w, h, w * c, QImage.Format.Format_BGR888)
                             pixmap = QPixmap.fromImage(qImg)
@@ -589,25 +605,24 @@ class rtsp_worker(QThread):
                     except Exception as e:
                         print(f"초기 crop 이미지 오류 :: {e}")
                     try:
-                        if selected_main2 == True or main2_frame == None:# or isCrop:
+                        if selected_main2 == True or main2_frame == None:  # or isCrop:
                             h, w, c = frame.shape
                             qImg = QImage(frame.data, w, h, w * c, QImage.Format.Format_BGR888)
                             pixmap = QPixmap.fromImage(qImg)
-                            #frame_mutex.lock()
+                            # frame_mutex.lock()
                             main2_frame = pixmap
-                            #isCrop = False
-                            #frame_mutex.unlock()
-                        if crop_frame_count % round(30/self.main_monit_limit) != 0:
+                            # isCrop = False
+                            # frame_mutex.unlock()
+                        if crop_frame_count % round(fps / self.main_monit_limit) != 0:
                             self.msleep(1)
                             continue
 
-                        if selected_main2 != True :
+                        if selected_main2 != True:
                             h, w, c = frame.shape
                             qImg = QImage(frame.data, w, h, w * c, QImage.Format.Format_BGR888)
                             pixmap = QPixmap.fromImage(qImg)
 
                         main_frame = pixmap.scaled(self.parent.main_screen_width, self.parent.main_screen_height)
-
 
                         # if crop_frame_count % round(video_fps/monit_fps) == 0:
                         #    crop_frame = main_frame.copy()
@@ -658,20 +673,20 @@ class rtsp_worker(QThread):
                             except Exception as e:
                                 print(f"draw_rect_errorr :: {e}")
                                 continue
-                        #frame_mutex.lock()
+                        # frame_mutex.lock()
                         self.parent.main2.setPixmap(main_frame)
-                        #frame_mutex.unlock()
+                        # frame_mutex.unlock()
                         # self.main1.setPixmap(main_frame.scaled(self.main_screen_width, self.main_screen_height))
                     except Exception as e:
                         print(f"setPixmap main errer :: {e}")
 
                     self.msleep(int(Config.config['PROGRAM']['msleep_rtsp2']))
-                    #self.update_frame.emit(frame, self.name, crop_frame_count)
+                    # self.update_frame.emit(frame, self.name, crop_frame_count)
 
                 if self.name == 'third':
                     try:
-                        #if not start_rtsp3:
-                        if not start_rtsp3 and crop_frame_count % round(30/monit_fps) == 0:
+                        # if not start_rtsp3:
+                        if not start_rtsp3 and crop_frame_count % round(fps / monit_fps) == 0:
                             h, w, c = frame.shape
                             qImg = QImage(frame.data, w, h, w * c, QImage.Format.Format_BGR888)
                             pixmap = QPixmap.fromImage(qImg)
@@ -830,19 +845,19 @@ class rtsp_worker(QThread):
                         print(f"초기 crop 이미지 오류 :: {e}")
                     try:
 
-                        if selected_main3 == True or main3_frame == None:# or isCrop:
+                        if selected_main3 == True or main3_frame == None:  # or isCrop:
                             h, w, c = frame.shape
                             qImg = QImage(frame.data, w, h, w * c, QImage.Format.Format_BGR888)
                             pixmap = QPixmap.fromImage(qImg)
-                            #frame_mutex.lock()
+                            # frame_mutex.lock()
                             main3_frame = pixmap
-                            #isCrop = False
-                            #frame_mutex.unlock()
-                        if crop_frame_count % round(30/self.main_monit_limit) != 0:
+                            # isCrop = False
+                            # frame_mutex.unlock()
+                        if crop_frame_count % round(fps / self.main_monit_limit) != 0:
                             self.msleep(1)
                             continue
 
-                        if selected_main3 != True :
+                        if selected_main3 != True:
                             h, w, c = frame.shape
                             qImg = QImage(frame.data, w, h, w * c, QImage.Format.Format_BGR888)
                             pixmap = QPixmap.fromImage(qImg)
@@ -898,27 +913,22 @@ class rtsp_worker(QThread):
                             except Exception as e:
                                 print(f"draw_rect_errorr :: {e}")
                                 continue
-                        #frame_mutex.lock()
+                        # frame_mutex.lock()
                         self.parent.main3.setPixmap(main_frame)
-                        #frame_mutex.unlock()
+                        # frame_mutex.unlock()
                         # self.main1.setPixmap(main_frame.scaled(self.main_screen_width, self.main_screen_height))
                     except Exception as e:
                         print(f"setPixmap main errer :: {e}")
 
                     self.msleep(int(Config.config['PROGRAM']['msleep_rtsp3']))
-                    #self.update_frame.emit(frame, self.name, crop_frame_count)
-
-            cap.release()
+                    # self.update_frame.emit(frame, self.name, crop_frame_count)
+            if not self.cap:
+                self.cap.release()
         except Exception as e:
             print(f"RTSP Server Run Error :: {e}")
-            if self.name == 'first':
-                QMessageBox.about(self, "RTSP Connect Error", "First RTSP Server Not Connect")
-            if self.name == 'second':
-                QMessageBox.about(self, "RTSP Connect Error", "Second RTSP Server Not Connect")
-            if self.name == 'third':
-                QMessageBox.about(self, "RTSP Connect Error", "Third RTSP Server Not Connect")
             self.stop()
-    def draw_crop_rect(self,frame,geometry,text,ch,selected, rotate):
+
+    def draw_crop_rect(self, frame, geometry, text, ch, selected, rotate):
 
         # TODO: 해당 rect는 원본 비율의 x, y, w, h
         pixmap_with_rects = frame
@@ -926,14 +936,14 @@ class rtsp_worker(QThread):
         painter.setRenderHint(QPainter.Antialiasing)
         if not selected:
             pen = QPen(Qt.green)
-            #pen = QPen(Qt.yellow)
+            # pen = QPen(Qt.yellow)
         if selected:
             pen = QPen(Qt.red)
         pen.setWidth(2)
         painter.setPen(pen)
 
         font = QFont()
-        #font.setFamily('Arial')
+        # font.setFamily('Arial')
         font.setFamily(f"{os.path.dirname(__file__)}\\Assets\\NotoSans-Regular.ttf")
         font.setBold(True)
         font.setPointSize(round(10))
@@ -951,9 +961,9 @@ class rtsp_worker(QThread):
 
             painter.drawRect(rect)
 
-        if self.parent.isABS[ch]: # onABS
-            painter.drawText(QRect(x+10,y+10,w,h),Qt.TextWordWrap, text+'\nABS')  # rect 위에 key 값을 글자로 씀
-        if not self.parent.isABS[ch]: # offABS
+        if self.parent.isABS[ch]:  # onABS
+            painter.drawText(QRect(x + 10, y + 10, w, h), Qt.TextWordWrap, text + '\nABS')  # rect 위에 key 값을 글자로 씀
+        if not self.parent.isABS[ch]:  # offABS
             painter.drawText(QRect(x + 10, y + 10, w, h), Qt.TextWordWrap, text)  # rect 위에 key 값을 글자로 씀
         painter.end()
 
@@ -963,6 +973,7 @@ class rtsp_worker(QThread):
         self.working = False
         self.quit()
         self.wait(2000)
+
 
 # TODO : crop 이미지 스레드 ( 현재 미사용 )
 """
@@ -1043,10 +1054,13 @@ class CropUpdateThread(QThread):
         self.quit()
         self.wait(2000)
 """
+
+
 # TODO : OBS( 방송화면 ) 출력용 모니터 스레드
 class MonitThread(QThread):
     update_pixmap = pyqtSignal(QPixmap)
-    def __init__(self,channel_rect,ch, isABS,selected_ch, parent,isFirst):
+
+    def __init__(self, channel_rect, ch, isABS, selected_ch, parent, isFirst):
         super().__init__()
         self.monit_class = MonitClass()
         self.working = True
@@ -1058,7 +1072,7 @@ class MonitThread(QThread):
         self.isFirst = isFirst
 
     def run(self):
-        #global ch_frame
+        # global ch_frame
         global main1_frame
         global main2_frame
         global main3_frame
@@ -1068,7 +1082,14 @@ class MonitThread(QThread):
         global pitchInfo
         global frame_mutex
         try:
-            while self.working :
+
+            stream_key = Config.config['STREAMING']['stream_key']
+            width, height = int(Config.config['PROGRAM']['width']), int(Config.config['PROGRAM']['height'])  # 해상도 설정
+            fps = int(Config.config['STREAMING']['fps'])  # 프레임 속도 설정
+            self.ffmpeg_process = self.stream_to_youtube(stream_key, width, height, fps)
+
+
+            while self.working:
                 if self.isFirst:
                     self.msleep(100)
                     continue
@@ -1076,69 +1097,74 @@ class MonitThread(QThread):
 
                     if self.channel_rect[6] == 0:
                         self.selected_ch = "no_rotate"
-                        #frame_mutex.lock()
-                        frame = main1_frame.copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2], self.channel_rect[3]).scaled(config_width,config_height)
-                        #frame_mutex.unlock()
+                        # frame_mutex.lock()
+                        frame = main1_frame.copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],
+                                                 self.channel_rect[3]).scaled(config_width, config_height)
+                        # frame_mutex.unlock()
 
                     else:
-                        #frame_mutex.lock()
+                        # frame_mutex.lock()
                         frame = main1_frame.copy()
-                        #frame_mutex.unlock()
+                        # frame_mutex.unlock()
                 if self.ch == 'RTSP_2':
                     if self.channel_rect[6] == 0:
                         self.selected_ch = "no_rotate"
-                        #frame_mutex.lock()
+                        # frame_mutex.lock()
                         frame = main2_frame.copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],
                                                  self.channel_rect[3]).scaled(config_width, config_height)
-                        #frame_mutex.unlock()
+                        # frame_mutex.unlock()
                     else:
-                        #frame_mutex.lock()
+                        # frame_mutex.lock()
                         frame = main2_frame.copy()
-                        #frame_mutex.unlock()
+                        # frame_mutex.unlock()
                 if self.ch == 'RTSP_3':
                     if self.channel_rect[6] == 0:
                         self.selected_ch = "no_rotate"
-                        #frame_mutex.lock()
+                        # frame_mutex.lock()
                         frame = main3_frame.copy(self.channel_rect[0], self.channel_rect[1], self.channel_rect[2],
                                                  self.channel_rect[3]).scaled(config_width, config_height)
-                        #frame_mutex.unlock()
+                        # frame_mutex.unlock()
                     else:
-                        #frame_mutex.lock()
+                        # frame_mutex.lock()
                         frame = main3_frame.copy()
-                        #frame_mutex.unlock()
+                        # frame_mutex.unlock()
 
                 if self.selected_ch != 'no_rotate' and self.channel_rect != None:
-                    #frame_mutex.lock()
-                    pixmap = self.get_rotate_image(self.channel_rect, frame,1,1,config_width,config_height)
-                    #frame_mutex.unlock()
+                    # frame_mutex.lock()
+                    pixmap = self.get_rotate_image(self.channel_rect, frame, 1, 1, config_width, config_height)
+                    # frame_mutex.unlock()
 
                 else:
-                    #frame_mutex.lock()
+                    # frame_mutex.lock()
                     pixmap = frame
-                    #frame_mutex.unlock()
+                    # frame_mutex.unlock()
                 # TODO : 스트라이크존 isABS 판별
                 if self.isABS:
                     painter = QPainter(pixmap)
                     painter.setOpacity(0.6)
-                    painter.drawPixmap(self.parent.strike_zone_image_x, self.parent.strike_zone_image_y, self.parent.strike_zone)
+                    painter.drawPixmap(self.parent.strike_zone_image_x, self.parent.strike_zone_image_y,
+                                       self.parent.strike_zone)
 
                     if pitchInfo is not None:
                         try:
                             if Config.config['ABS']['reverse'] == 'true':
-                                x_rate = ((self.parent.zone_width / 2) + (pitchInfo['pitch_x'] / 10000)) / self.parent.zone_width
+                                x_rate = ((self.parent.zone_width / 2) + (
+                                            pitchInfo['pitch_x'] / 10000)) / self.parent.zone_width
                                 x_point = round(self.parent.strike_zone_start_x + (
-                                            (self.parent.strike_zone_end_x - self.parent.strike_zone_start_x) * x_rate))
+                                        (self.parent.strike_zone_end_x - self.parent.strike_zone_start_x) * x_rate))
                                 x_point = round(2 * (self.parent.strike_zone_start_x + (
-                                            self.parent.strike_zone_end_x - self.parent.strike_zone_start_x) / 2) - x_point)
+                                        self.parent.strike_zone_end_x - self.parent.strike_zone_start_x) / 2) - x_point)
 
                             if Config.config['ABS']['reverse'] == 'false':
-                                x_rate = ((self.parent.zone_width / 2) + (pitchInfo['pitch_x'] / 10000)) / self.parent.zone_width
+                                x_rate = ((self.parent.zone_width / 2) + (
+                                            pitchInfo['pitch_x'] / 10000)) / self.parent.zone_width
                                 x_point = round(self.parent.strike_zone_start_x + (
-                                            (self.parent.strike_zone_end_x - self.parent.strike_zone_start_x) * x_rate))
+                                        (self.parent.strike_zone_end_x - self.parent.strike_zone_start_x) * x_rate))
                             y_rate = ((pitchInfo['pitch_y'] - pitchInfo['box_bottom']) / (
-                                        pitchInfo['box_top'] - pitchInfo['box_bottom']))
+                                    pitchInfo['box_top'] - pitchInfo['box_bottom']))
                             y_point = round(
-                                self.parent.strike_zone_end_y - ((self.parent.strike_zone_end_y - self.parent.strike_zone_start_y) * y_rate))
+                                self.parent.strike_zone_end_y - (
+                                            (self.parent.strike_zone_end_y - self.parent.strike_zone_start_y) * y_rate))
 
                             if x_point <= self.parent.strike_zone_image_x:
                                 x_point = self.parent.strike_zone_image_x + self.parent.ball_size
@@ -1155,44 +1181,133 @@ class MonitThread(QThread):
                             painter.setPen(QPen(Qt.red))
                             painter.setFont(QFont(f"{os.path.dirname(__file__)}\\Assets\\NotoSans-Regular.ttf",
                                                   round(25 * (config_width / 1920)), QFont.Bold))
-                            painter.drawText(QRect(self.parent.km_start_x, self.parent.km_start_y, self.parent.strike_zone.width(),
-                                                   self.parent.strike_zone_image_y + self.parent.strike_zone.height() - self.parent.km_start_y),
-                                             Qt.AlignCenter, f"{pitchInfo['speed']} KM")
+                            painter.drawText(
+                                QRect(self.parent.km_start_x, self.parent.km_start_y, self.parent.strike_zone.width(),
+                                      self.parent.strike_zone_image_y + self.parent.strike_zone.height() - self.parent.km_start_y),
+                                Qt.AlignCenter, f"{pitchInfo['speed']} KM")
                             painter.end()
                         except Exception as e:
                             print(f"ABS ball point error :: {e}")
 
                 try:
-                    #if frame_mutex.tryLock():
-                    #self.monit_class.monit_label.setPixmap(pixmap)
-                    self.update_pixmap.emit(pixmap)
-                    self.msleep(int(Config.config['PROGRAM']['monit_msleep']))
+                    # if frame_mutex.tryLock():
+                    # self.monit_class.monit_label.setPixmap(pixmap)
+                    #self.update_pixmap.emit(pixmap)
+                    #self.msleep(int(Config.config['PROGRAM']['monit_msleep']))
 
+                    # TODO : youtube stream 함수
+                     frame_mutex.lock()
+                     frame = self.qpixmap_to_cv(pixmap)  # OpenCV 포맷으로 변환
+                     self.send_frame_to_ffmpeg(self.ffmpeg_process, frame)  # 프레임을 FFmpeg로 전송
+                     frame_mutex.unlock()
 
                 except Exception as e:
                     print(f"monit label setPixmap Error :: {e}")
         except Exception as e:
             print(f"monit thread exception :: {e}")
 
+    def qpixmap_to_cv(self, qpixmap):
+        """QPixmap을 OpenCV BGR 이미지로 변환하는 함수"""
+        qimage = qpixmap.toImage()
+        width = qimage.width()
+        height = qimage.height()
 
-    def change_channel_rect(self,channel_rect,ch, isABS,selected_ch,isFirst):
+        # QImage 포맷에 따른 처리
+        if qimage.format() == QImage.Format_RGB888:
+            # RGB888 포맷은 3바이트 (RGB)
+            buffer = qimage.bits().asstring(qimage.byteCount())
+            img = np.frombuffer(buffer, dtype=np.uint8).reshape((height, width, 3))
+            return img  # 이미 BGR 포맷으로 처리할 필요 없음
+
+        elif qimage.format() == QImage.Format_RGBA8888:
+            # RGBA8888 포맷은 4바이트 (RGBA)
+            buffer = qimage.bits().asstring(qimage.byteCount())
+            img = np.frombuffer(buffer, dtype=np.uint8).reshape((height, width, 4))
+            return cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)  # RGBA를 BGR로 변환
+
+        elif qimage.format() == QImage.Format_RGB32:
+            # RGB32 포맷은 4바이트 (BGRA)
+            buffer = qimage.bits().asstring(qimage.byteCount())
+            img = np.frombuffer(buffer, dtype=np.uint8).reshape((height, width, 4))
+            return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)  # BGRA를 BGR로 변환
+
+        else:
+            # 지원되지 않는 포맷의 경우
+            raise ValueError(f"Unsupported QImage format: {qimage.format()}")
+
+    def stream_to_youtube(self,stream_key, width, height, fps=30):
+        """YouTube RTMP로 스트리밍하는 FFmpeg 프로세스를 설정"""
+        """
+        ffmpeg_cmd = [
+            'C:\\Users\\kangchul\\Downloads\\ffmpeg-2024-09-16-git-76ff97cef5-full_build\\ffmpeg-2024-09-16-git-76ff97cef5-full_build\\bin\\ffmpeg',  # FFmpeg 실행 파일 경로
+            '-y',  # 파일 덮어쓰기
+            '-f', 'rawvideo',  # 원시 비디오 형식 사용
+            '-vcodec', 'rawvideo',
+            '-pix_fmt', 'bgr24',  # OpenCV에서 사용하는 픽셀 포맷
+            '-s', f'{width}x{height}',  # 비디오 프레임 크기
+            '-r', str(fps),  # 프레임 속도
+            '-i', '-',  # 비디오 표준 입력
+            '-f', 'lavfi',  # 가상 오디오 필터 사용
+            '-i', 'anullsrc=r=44100:cl=stereo',  # 무음 오디오 생성
+            '-c:v', 'libx264',  # 비디오 코덱
+            '-preset', 'veryfast',  # 인코딩 속도
+            '-b:v', '3000k',  # 비디오 비트레이트
+            '-c:a', 'aac',  # 오디오 코덱
+            '-b:a', '128k',  # 오디오 비트레이트
+            '-f', 'flv',  # YouTube가 지원하는 형식
+            f'rtmp://a.rtmp.youtube.com/live2/{stream_key}'  # 스트리밍 URL
+        ]
+        """
+        ffmpeg_cmd = [
+            'C:\\Users\\kangchul\\Downloads\\ffmpeg-2024-09-16-git-76ff97cef5-full_build\\ffmpeg-2024-09-16-git-76ff97cef5-full_build\\bin\\ffmpeg',
+            # FFmpeg 실행 파일 경로
+            '-y',  # 파일 덮어쓰기
+            '-f', 'rawvideo',  # 원시 비디오 형식 사용
+            '-vcodec', 'rawvideo',
+            '-pix_fmt', 'bgr24',  # OpenCV에서 사용하는 픽셀 포맷
+            '-s', f'{width}x{height}',  # 비디오 프레임 크기
+            '-r', str(fps),  # 프레임 속도
+            '-i', '-',  # 비디오 표준 입력 (파이프를 통해 비디오 입력)
+            '-i', 'rtsp://192.168.0.30/stream1',  # RTSP 스트림에서 비디오 및 오디오 입력
+            '-map', '0:v',  # 첫 번째 입력에서 비디오를 사용
+            '-map', '1:a',  # 두 번째 입력(RTSP)에서 오디오를 사용
+            '-c:v', 'libx264',  # 비디오 코덱
+            '-preset', 'veryfast',  # 인코딩 속도
+            '-b:v', '3000k',  # 비디오 비트레이트
+            '-c:a', 'aac',  # 오디오 코덱
+            '-b:a', '128k',  # 오디오 비트레이트
+            '-f', 'flv',  # YouTube가 지원하는 형식
+            f'rtmp://a.rtmp.youtube.com/live2/{stream_key}'  # 스트리밍 URL
+
+        ]
+        return subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE)
+
+    def send_frame_to_ffmpeg(self, ffmpeg_process, frame):
+        # 프레임 데이터를 FFmpeg에 전송
+        try:
+            ffmpeg_process.stdin.write(frame.tobytes())
+            ffmpeg_process.stdin.flush()  # 데이터가 즉시 전송되도록 강제
+
+        except Exception as e:
+            print(f"Error sending frame to FFmpeg: {e}")
+    def change_channel_rect(self, channel_rect, ch, isABS, selected_ch, isFirst):
         self.channel_rect = channel_rect
         self.ch = ch
         self.isABS = isABS
         self.selected_ch = selected_ch
         self.isFirst = isFirst
 
-    def get_rotate_image(self, channel_rect, main_frame ,width_rate,height_rate, scaled_width, scaled_height):
+    def get_rotate_image(self, channel_rect, main_frame, width_rate, height_rate, scaled_width, scaled_height):
         global frame_mutex
         try:
-            top_left, top_right, bottom_left, bottom_right = get_rotate_point(round(channel_rect[0] * width_rate )
+            top_left, top_right, bottom_left, bottom_right = get_rotate_point(round(channel_rect[0] * width_rate)
                                                                               , round(channel_rect[1] * height_rate)
                                                                               , round(channel_rect[2] * width_rate)
                                                                               , round(channel_rect[3] * height_rate),
                                                                               channel_rect[6])
-            #frame_mutex.lock()
+            # frame_mutex.lock()
             resize_image = main_frame
-            #frame_mutex.unlock()
+            # frame_mutex.unlock()
 
             # 사각형 영역을 QPolygon으로 정의
             polygon = QPolygon([top_left, top_right, bottom_right, bottom_left])
@@ -1222,7 +1337,7 @@ class MonitThread(QThread):
                 rotate_height = abs(round(max_x - min_x))
 
             rotated_pixmap = QPixmap(rotate_width, rotate_height)
-            #rotated_pixmap.fill(Qt.transparent)  # 투명 배경으로 채우기
+            # rotated_pixmap.fill(Qt.transparent)  # 투명 배경으로 채우기
 
             # 크롭된 이미지의 중심 좌표 계산
             center_x = round(rotate_width / 2)
@@ -1243,10 +1358,11 @@ class MonitThread(QThread):
             painter.end()
 
             # 유효한 부분만 크롭
-            final_pixmap = rotated_pixmap.copy(round(((rotate_width-channel_rect[2]*width_rate))/2 ),round(((rotate_height-channel_rect[3]*height_rate))/2 ),
-                                               round(channel_rect[2]),round(channel_rect[3]))
+            final_pixmap = rotated_pixmap.copy(round(((rotate_width - channel_rect[2] * width_rate)) / 2),
+                                               round(((rotate_height - channel_rect[3] * height_rate)) / 2),
+                                               round(channel_rect[2]), round(channel_rect[3]))
 
-            return final_pixmap.scaled(int(scaled_width),int(scaled_height))
+            return final_pixmap.scaled(int(scaled_width), int(scaled_height))
         except Exception as e:
             print(e)
 
@@ -1255,6 +1371,7 @@ class MonitThread(QThread):
         self.monit_class.close()
         self.quit()
         self.wait(2000)
+
 
 if isExe:
     form_class = uic.loadUiType(f"{os.path.dirname(__file__)}\\UI\\BroadCast.ui")[0]
@@ -1266,7 +1383,7 @@ if not isExe:
 
 
 # TODO : OBS ( 방송출력 ) 화면 Class
-class MonitClass(QWidget,monit_class):
+class MonitClass(QWidget, monit_class):
     def __init__(self):
         global isExe
         global config_width
@@ -1276,18 +1393,19 @@ class MonitClass(QWidget,monit_class):
         self.setupUi(self)
 
         self.resize(config_width, config_height)
-        self.setFixedSize(self.width(),self.height())
+        self.setFixedSize(self.width(), self.height())
         self.monit_label.setGeometry(0, 0, config_width, config_height)
         if isExe:
             self.monit_label.setPixmap(QPixmap(f"{os.path.dirname(__file__)}\\Assets\\no-signal-icon-black.jpg"))
         if not isExe:
             self.monit_label.setPixmap(QPixmap('./Assets/no-signal-icon-black.jpg'))
 
-        self.setGeometry(-(config_width+1), -(config_height+1), config_width, config_height)
+        self.setGeometry(-(config_width + 1), -(config_height + 1), config_width, config_height)
         self.setWindowFlags(Qt.FramelessWindowHint)
-        #self.setCursor(QCursor(Qt.BlankCursor))
+        # self.setCursor(QCursor(Qt.BlankCursor))
         self.setWindowOpacity(0.9999)
         self.show()
+
 
 # TODO : main 화면 Class
 class WindowClass(QMainWindow, form_class):
@@ -1301,12 +1419,12 @@ class WindowClass(QMainWindow, form_class):
         self.window_height = tkinter.Tk().winfo_screenheight()
         self.setupUi(self)
 
-        #self.resize(round(self.window_width*0.8), round(self.window_height*0.8))
+        # self.resize(round(self.window_width*0.8), round(self.window_height*0.8))
         self.resize(round(self.window_width * 0.6), round(self.window_height * 0.6))
         self.rtsp_num = int(Config.config['RTSP']['rtsp_num'])
         # TODO : selected color :: rgb(253, 8, 8) // no selected color :: rgb(190, 190, 190);
-        self.selected_color="border : 2px solid rgb(253,8,8)"
-        self.no_selected_color="border : 2px solid rgb(190, 190, 190)"
+        self.selected_color = "border : 2px solid rgb(253,8,8)"
+        self.no_selected_color = "border : 2px solid rgb(190, 190, 190)"
         self.dialog = None
 
         # TODO : 영상 화면 비율 16:9
@@ -1321,7 +1439,9 @@ class WindowClass(QMainWindow, form_class):
         self.rtsp_worker1 = None
         self.rtsp_worker2 = None
         self.rtsp_worker3 = None
-
+        self.rtsp1_timeout = None
+        self.rtsp2_timeout = None
+        self.rtsp3_timeout = None
         # TODO : frame 없을때 기본 이미지 설정
         if isExe:
             self.noSignalImage = QPixmap(f"{os.path.dirname(__file__)}\\Assets\\no-signal-icon-black.jpg")
@@ -1330,11 +1450,8 @@ class WindowClass(QMainWindow, form_class):
             self.noSignalImage = QPixmap('./Assets/no-signal-icon-black.jpg')
             self.setWindowIcon(QIcon(f"{os.path.dirname(__file__)}\\Assets\\icon.ico"))
 
-
-
         # TODO : 이미지 사이즈 사용자의 모니터 사이즈에 맞춰 16:9 비율로 설정
-        if self.rtsp_num == 2 :
-
+        if self.rtsp_num == 2:
             self.main_screen_width = round(self.window_width / 2.15)
             self.main_screen_height = round(self.main_screen_width / self.rate)
             """
@@ -1367,7 +1484,7 @@ class WindowClass(QMainWindow, form_class):
             self.main3.setPixmap(self.main_noSignalImage)
 
         # TODO : PIP 모니터 화면 크기 설정 및 초기 이미지 선언
-        #self.sub_screen_width = round(self.main_screen_width / 2)
+        # self.sub_screen_width = round(self.main_screen_width / 2)
         self.sub_screen_width = round(self.window_width / 5.4)
         self.sub_screen_height = round(self.sub_screen_width / self.rate)
         self.sub_noSignalImage = self.noSignalImage.scaled(self.sub_screen_width, self.sub_screen_height)
@@ -1377,27 +1494,30 @@ class WindowClass(QMainWindow, form_class):
             self.channel_list = [self.main1, self.main2, self.ch1, self.ch2, self.ch3, self.ch4, self.ch5,
                                  self.ch6, self.ch7, self.ch8, self.ch9, self.ch10]
         if self.rtsp_num == 3:
-            self.channel_list = [self.main1, self.main2, self.main3, self.ch1, self.ch2, self.ch3, self.ch4, self.ch5, self.ch6, self.ch7, self.ch8, self.ch9, self.ch10]
+            self.channel_list = [self.main1, self.main2, self.main3, self.ch1, self.ch2, self.ch3, self.ch4, self.ch5,
+                                 self.ch6, self.ch7, self.ch8, self.ch9, self.ch10]
 
         # TODO : crop 스레드 관리를 위한 dict, 화면 표출을 위한 dict
-        #self.crop_update_thread = {'ch1':None,'ch2':None,'ch3':None,'ch4':None,'ch5':None,'ch6':None,'ch7':None,'ch8':None,'ch9':None,'ch10':None}
+        # self.crop_update_thread = {'ch1':None,'ch2':None,'ch3':None,'ch4':None,'ch5':None,'ch6':None,'ch7':None,'ch8':None,'ch9':None,'ch10':None}
         if self.rtsp_num == 2:
-            self.ch_rect = {'RTSP_1':None,'RTSP_2':None,'ch1': None, 'ch2': None, 'ch3': None, 'ch4': None, 'ch5': None, 'ch6': None,'ch7': None, 'ch8': None, 'ch9': None, 'ch10': None}
+            self.ch_rect = {'RTSP_1': None, 'RTSP_2': None, 'ch1': None, 'ch2': None, 'ch3': None, 'ch4': None,
+                            'ch5': None, 'ch6': None, 'ch7': None, 'ch8': None, 'ch9': None, 'ch10': None}
         elif self.rtsp_num == 3:
-            self.ch_rect = {'RTSP_1': None, 'RTSP_2': None, 'RTSP_3': None, 'ch1': None, 'ch2': None, 'ch3': None, 'ch4': None,
-                            'ch5': None, 'ch6': None, 'ch7': None, 'ch8': None, 'ch9': None, 'ch10':None}
+            self.ch_rect = {'RTSP_1': None, 'RTSP_2': None, 'RTSP_3': None, 'ch1': None, 'ch2': None, 'ch3': None,
+                            'ch4': None,
+                            'ch5': None, 'ch6': None, 'ch7': None, 'ch8': None, 'ch9': None, 'ch10': None}
         for i in Config.config['PIP'].items():
             if i[1] != "None":
                 value = i[1]
                 if value.find('false') != -1:
-                    value = i[1].replace('false','False')
+                    value = i[1].replace('false', 'False')
                 if value.find('true') != -1:
                     value = i[1].replace('true', 'True')
                 self.ch_rect[i[0]] = eval(value)
 
         # TODO : RTSP에서 들어오는 이미지의 비율은 16:9 비율로 특정, 이미지 크기가 커지면 PIP 화면 크롭시 화면에 가득찰수가 있어서 1280x720으로 변환 해주기 위한 resize 필요
         # TODO : 해당 resize시 원본과 resize된 비율을 가지고 있어야됨.
-        self.crop_ch_rect = {"RTSP_1":[None,None],"RTSP_2":[None,None],"RTSP_3":[None,None]}
+        self.crop_ch_rect = {"RTSP_1": [None, None], "RTSP_2": [None, None], "RTSP_3": [None, None]}
 
         # TODO : 하위 (crop) 채널 초기 이미지 셋팅
         self.ch1.setPixmap(self.sub_noSignalImage)
@@ -1412,7 +1532,7 @@ class WindowClass(QMainWindow, form_class):
         self.ch10.setPixmap(self.sub_noSignalImage)
 
         # TODO : Menu 버튼의 RTSP 설정 버튼 slot 설정
-        self.actionSet_first_RTSP.triggered.connect(lambda : self.getRtsp('First RTSP'))
+        self.actionSet_first_RTSP.triggered.connect(lambda: self.getRtsp('First RTSP'))
         self.actionSet_Second_RTSP.triggered.connect(lambda: self.getRtsp('Second RTSP'))
         self.actionSet_Third_RTSP.triggered.connect(lambda: self.getRtsp('Third RTSP'))
 
@@ -1426,37 +1546,36 @@ class WindowClass(QMainWindow, form_class):
         self.actionMax_size_Screen.triggered.connect(self.showMaximized)
         self.actionQuit_q.triggered.connect(self.close)
 
-
         # TODO : Menu 버튼의 channel 설정
         try:
-            self.actionSelect_first_RTSP.triggered.connect(lambda :self.getChannelSetting(rtsp_name="First RTSP"))
+            self.actionSelect_first_RTSP.triggered.connect(lambda: self.getChannelSetting(rtsp_name="First RTSP"))
             self.actionSelect_Second_RTSP.triggered.connect(lambda: self.getChannelSetting(rtsp_name="Second RTSP"))
             self.actionSelect_Third_RTSP.triggered.connect(lambda: self.getChannelSetting(rtsp_name="Third RTSP"))
         except Exception as e:
             print(f"actionSelect Error :: {e}")
 
         # TODO : Menu 버튼의 RTSP 갯수 설정
-        self.Set2RTSP.triggered.connect(lambda :self.setRTSP_Number(rtsp_number=2))
+        self.Set2RTSP.triggered.connect(lambda: self.setRTSP_Number(rtsp_number=2))
         self.Set3RTSP.triggered.connect(lambda: self.setRTSP_Number(rtsp_number=3))
 
         # TODO : Menu 버튼의 ShortCut Key 뷰
         shortCut_Key_box = QMessageBox()
-        #shortCut_Key_box.setMinimumWidth(20031)
-        self.actionView_ShortCut_Key.triggered.connect(lambda :
-                                                       shortCut_Key_box.about(self,"ShortCut Key",f"RTSP_1 : Ins                                        ."
-                                                                                  f"\nRTSP_2 : Home\nRTSP_3 : PgUp\n"
-                                                                                  f"CH1 : 1\nCH2 : 2\nCH3 : 3\nCH4 : 4\n"
-                                                                                  f"CH5 : 5\nCH6 : 6\nCH7 : 7\nCH8 : 8\n"
-                                                                                  f"CH9 : 9\nCH10 : 0"))
+        # shortCut_Key_box.setMinimumWidth(20031)
+        self.actionView_ShortCut_Key.triggered.connect(lambda:
+                                                       shortCut_Key_box.about(self, "ShortCut Key",
+                                                                              f"RTSP_1 : Ins                                        ."
+                                                                              f"\nRTSP_2 : Home\nRTSP_3 : PgUp\n"
+                                                                              f"CH1 : 1\nCH2 : 2\nCH3 : 3\nCH4 : 4\n"
+                                                                              f"CH5 : 5\nCH6 : 6\nCH7 : 7\nCH8 : 8\n"
+                                                                              f"CH9 : 9\nCH10 : 0"))
 
         # TODO : Menu 버튼의 stop RTSP 클릭 이벤트
-        self.actionStop_First_RTSP_Server.triggered.connect(lambda :self.stop_rtsp(name='first'))
+        self.actionStop_First_RTSP_Server.triggered.connect(lambda: self.stop_rtsp(name='first'))
         self.actionStop_Second_RTSP_Server.triggered.connect(lambda: self.stop_rtsp(name='second'))
         self.actionStop_Third_RTSP_Server.triggered.connect(lambda: self.stop_rtsp(name='third'))
 
-
         # TODO : Menu 버튼의 stop CH 클릭 이벤트
-        self.actionStop_CH_1.triggered.connect(lambda : self.stop_ch(ch='ch1'))
+        self.actionStop_CH_1.triggered.connect(lambda: self.stop_ch(ch='ch1'))
         self.actionStop_CH_2.triggered.connect(lambda: self.stop_ch(ch='ch2'))
         self.actionStop_CH_3.triggered.connect(lambda: self.stop_ch(ch='ch3'))
         self.actionStop_CH_4.triggered.connect(lambda: self.stop_ch(ch='ch4'))
@@ -1464,36 +1583,43 @@ class WindowClass(QMainWindow, form_class):
         self.actionStop_CH_6.triggered.connect(lambda: self.stop_ch(ch='ch6'))
         self.actionStop_CH_7.triggered.connect(lambda: self.stop_ch(ch='ch7'))
         self.actionStop_CH_8.triggered.connect(lambda: self.stop_ch(ch='ch8'))
-        self.actionStop_CH_9.triggered.connect(lambda : self.stop_ch(ch='ch9'))
+        self.actionStop_CH_9.triggered.connect(lambda: self.stop_ch(ch='ch9'))
         self.actionStop_CH_10.triggered.connect(lambda: self.stop_ch(ch='ch10'))
 
-        #self.actionStop_CH_1.mousePressEvent = lambda: self.stop_ch(ch='ch1')
+        # self.actionStop_CH_1.mousePressEvent = lambda: self.stop_ch(ch='ch1')
 
         # TODO : ABS 송출을 위한 스트라이크존 ( 방송 출력 모니터 비율에 맞춰 scaled )
         self.strike_zone = QPixmap(f"{os.path.dirname(__file__)}\\Assets\\strikeZone.png")
-        #self.strike_zone = QPixmap(f"{os.path.dirname(__file__)}\\Assets\\strikeZone2.png")
+        # self.strike_zone = QPixmap(f"{os.path.dirname(__file__)}\\Assets\\strikeZone2.png")
         strike_zone_width = self.strike_zone.width()
         strike_zone_height = self.strike_zone.height()
         # 출력 영상의 (100 /3.2)% 비율로 사이즈 조정
         resize_rate = config_height / 3.2 / strike_zone_height
-        self.strike_zone = self.strike_zone.scaled(round(strike_zone_width * resize_rate),round(strike_zone_height * resize_rate))
+        self.strike_zone = self.strike_zone.scaled(round(strike_zone_width * resize_rate),
+                                                   round(strike_zone_height * resize_rate))
 
         strike_zone_width = self.strike_zone.width()
         strike_zone_height = self.strike_zone.height()
 
         # 스트라이크 존 이미지 우측과 하단을 영상에서 띄어놓음
-        self.strike_zone_image_x = config_width - round(strike_zone_width + (config_width * 0.02)) # 스트라이크존 전체 이미지 좌상단 x
-        self.strike_zone_image_y = config_height - round(strike_zone_height + (config_height * 0.03)) # 스트라이크존 전체 이미지 좌상단 y
+        self.strike_zone_image_x = config_width - round(
+            strike_zone_width + (config_width * 0.02))  # 스트라이크존 전체 이미지 좌상단 x
+        self.strike_zone_image_y = config_height - round(
+            strike_zone_height + (config_height * 0.03))  # 스트라이크존 전체 이미지 좌상단 y
 
         # start x,y (40,40) // end x,y (100, 130)   :: rate start x,y ( (width * 40/140), (height*40/240) ) end x,y ( (width * 100/140), (height*130/240) )
         # TODO : ABS config 설정
-        self.ball_size = round(int(Config.config['ABS']['ball_size'])*(config_width/1920))
+        self.ball_size = round(int(Config.config['ABS']['ball_size']) * (config_width / 1920))
         self.zone_width = int(Config.config['ABS']['zone_width'])
 
-        self.strike_zone_start_x = self.strike_zone_image_x + round(strike_zone_width * 40 / 140) - int(self.ball_size/2) # 실질적인 스트라이크존 좌상단 x
-        self.strike_zone_start_y = self.strike_zone_image_y + round(strike_zone_height * 40 / 240) - int(self.ball_size/2) # 실질적인 스트라이크존 좌상단 y
-        self.strike_zone_end_x = self.strike_zone_image_x +round(strike_zone_width * 100 / 140) - int(self.ball_size/2) # 실질적인 스트라이크존 우하단 x
-        self.strike_zone_end_y = self.strike_zone_image_y + round(strike_zone_height * 130 / 240) - int(self.ball_size/2) # 실질적인 스트라이크존 우하단 y
+        self.strike_zone_start_x = self.strike_zone_image_x + round(strike_zone_width * 40 / 140) - int(
+            self.ball_size / 2)  # 실질적인 스트라이크존 좌상단 x
+        self.strike_zone_start_y = self.strike_zone_image_y + round(strike_zone_height * 40 / 240) - int(
+            self.ball_size / 2)  # 실질적인 스트라이크존 좌상단 y
+        self.strike_zone_end_x = self.strike_zone_image_x + round(strike_zone_width * 100 / 140) - int(
+            self.ball_size / 2)  # 실질적인 스트라이크존 우하단 x
+        self.strike_zone_end_y = self.strike_zone_image_y + round(strike_zone_height * 130 / 240) - int(
+            self.ball_size / 2)  # 실질적인 스트라이크존 우하단 y
         """
         self.strike_zone_start_x = self.strike_zone_image_x + round(strike_zone_width * 60 / 200) - int(self.ball_size / 2)  # 실질적인 스트라이크존 좌상단 x
         self.strike_zone_start_y = self.strike_zone_image_y + round(strike_zone_height * 56 / 240) - int(self.ball_size / 2)  # 실질적인 스트라이크존 좌상단 y
@@ -1501,20 +1627,21 @@ class WindowClass(QMainWindow, form_class):
         self.strike_zone_end_y = self.strike_zone_image_y + round(strike_zone_height * 153 / 240) - int(self.ball_size / 2)  # 실질적인 스트라이크존 우하단 y
         """
         self.km_start_x = self.strike_zone_image_x
-        self.km_start_y = self.strike_zone_image_y + round(strike_zone_height * (21/24))
+        self.km_start_y = self.strike_zone_image_y + round(strike_zone_height * (21 / 24))
 
         # TODO : ABS 송출을 위한 isABS 값 초기 설정
         if self.rtsp_num == 2:
             self.isABS = {'RTSP_1': False, 'RTSP_2': False, 'ch1': False, 'ch2': False, 'ch3': False, 'ch4': False,
-                            'ch5': False, 'ch6': False, 'ch7': False, 'ch8': False, 'ch9': False, 'ch10': False}
+                          'ch5': False, 'ch6': False, 'ch7': False, 'ch8': False, 'ch9': False, 'ch10': False}
 
         elif self.rtsp_num == 3:
             self.isABS = {'RTSP_1': False, 'RTSP_2': False, 'RTSP_3': False, 'ch1': False, 'ch2': False, 'ch3': False,
-                            'ch4': False,'ch5': False, 'ch6': False, 'ch7': False, 'ch8': False, 'ch9': False, 'ch10': False}
+                          'ch4': False, 'ch5': False, 'ch6': False, 'ch7': False, 'ch8': False, 'ch9': False,
+                          'ch10': False}
 
         # TODO : Menu ABS run 버튼 클릭
         if self.rtsp_num == 2:
-            self.actionRun_ABS_RTSP_1.triggered.connect(lambda : self.setIsABS(name='RTSP_1',onABS=True))
+            self.actionRun_ABS_RTSP_1.triggered.connect(lambda: self.setIsABS(name='RTSP_1', onABS=True))
             self.actionRun_ABS_RTSP_2.triggered.connect(lambda: self.setIsABS(name='RTSP_2', onABS=True))
             self.actionRun_ABS_CH_1.triggered.connect(lambda: self.setIsABS(name='ch1', onABS=True))
             self.actionRun_ABS_CH_2.triggered.connect(lambda: self.setIsABS(name='ch2', onABS=True))
@@ -1543,7 +1670,7 @@ class WindowClass(QMainWindow, form_class):
 
         # TODO : Menu ABS stop 버튼 클릭
         if self.rtsp_num == 2:
-            self.actionStop_ABS_RTSP_1.triggered.connect(lambda : self.setIsABS(name='RTSP_1',onABS=False))
+            self.actionStop_ABS_RTSP_1.triggered.connect(lambda: self.setIsABS(name='RTSP_1', onABS=False))
             self.actionStop_ABS_RTSP_2.triggered.connect(lambda: self.setIsABS(name='RTSP_2', onABS=False))
             self.actionStop_ABS_CH_1.triggered.connect(lambda: self.setIsABS(name='ch1', onABS=False))
             self.actionStop_ABS_CH_2.triggered.connect(lambda: self.setIsABS(name='ch2', onABS=False))
@@ -1571,16 +1698,16 @@ class WindowClass(QMainWindow, form_class):
             self.actionStop_ABS_CH_10.triggered.connect(lambda: self.setIsABS(name='ch10', onABS=False))
 
         # TODO : ABS 서버 통신 쓰레드
-        #self.abs_request_thread = threading.Thread(target=getPitchInfo)
-        #self.abs_request_thread.start()
+        # self.abs_request_thread = threading.Thread(target=getPitchInfo)
+        # self.abs_request_thread.start()
         self.abs_request_thread = GetPitchInfo(parent=self)
         self.abs_request_thread.start()
 
         # TODO : RTSP 서버 click 우클릭시 setChannel창 표출
 
-        self.main1.mousePressEvent = lambda event : self.rtspClickSetChannel(event,'rtsp1')
-        self.main2.mousePressEvent = lambda event : self.rtspClickSetChannel(event,'rtsp2')
-        self.main3.mousePressEvent = lambda event : self.rtspClickSetChannel(event,'rtsp3')
+        self.main1.mousePressEvent = lambda event: self.rtspClickSetChannel(event, 'rtsp1')
+        self.main2.mousePressEvent = lambda event: self.rtspClickSetChannel(event, 'rtsp2')
+        self.main3.mousePressEvent = lambda event: self.rtspClickSetChannel(event, 'rtsp3')
 
         # TODO : RTSP 서버 마우스 이동시 rect 변경
         """
@@ -1590,24 +1717,22 @@ class WindowClass(QMainWindow, form_class):
         """
 
         # TODO : CH 더블클릭 이벤트 ( ch 삭제 )
-        self.ch1.mouseDoubleClickEvent = lambda event : self.chDbClickStop(event,'ch1')
-        self.ch2.mouseDoubleClickEvent = lambda event : self.chDbClickStop(event, 'ch2')
-        self.ch3.mouseDoubleClickEvent = lambda event : self.chDbClickStop(event, 'ch3')
-        self.ch4.mouseDoubleClickEvent = lambda event : self.chDbClickStop(event, 'ch4')
-        self.ch5.mouseDoubleClickEvent = lambda event : self.chDbClickStop(event, 'ch5')
-        self.ch6.mouseDoubleClickEvent = lambda event : self.chDbClickStop(event, 'ch6')
-        self.ch7.mouseDoubleClickEvent = lambda event : self.chDbClickStop(event, 'ch7')
-        self.ch8.mouseDoubleClickEvent = lambda event : self.chDbClickStop(event, 'ch8')
-        self.ch9.mouseDoubleClickEvent = lambda event : self.chDbClickStop(event, 'ch9')
-        self.ch10.mouseDoubleClickEvent = lambda event : self.chDbClickStop(event, 'ch10')
+        self.ch1.mouseDoubleClickEvent = lambda event: self.chDbClickStop(event, 'ch1')
+        self.ch2.mouseDoubleClickEvent = lambda event: self.chDbClickStop(event, 'ch2')
+        self.ch3.mouseDoubleClickEvent = lambda event: self.chDbClickStop(event, 'ch3')
+        self.ch4.mouseDoubleClickEvent = lambda event: self.chDbClickStop(event, 'ch4')
+        self.ch5.mouseDoubleClickEvent = lambda event: self.chDbClickStop(event, 'ch5')
+        self.ch6.mouseDoubleClickEvent = lambda event: self.chDbClickStop(event, 'ch6')
+        self.ch7.mouseDoubleClickEvent = lambda event: self.chDbClickStop(event, 'ch7')
+        self.ch8.mouseDoubleClickEvent = lambda event: self.chDbClickStop(event, 'ch8')
+        self.ch9.mouseDoubleClickEvent = lambda event: self.chDbClickStop(event, 'ch9')
+        self.ch10.mouseDoubleClickEvent = lambda event: self.chDbClickStop(event, 'ch10')
 
         # TODO : OBS (방송) 화면 송출한 서브 화면 표시 (widget)
         self.isFirstMonit = True
         self.monit_thread = MonitThread(None, None, None, None, self, self.isFirstMonit)
         self.monit_thread.update_pixmap.connect(self.update_monit_label)
         self.monit_thread.start()
-
-
 
     # TODO : rtsp 마우스 움직임 함수
     """
@@ -1633,13 +1758,14 @@ class WindowClass(QMainWindow, form_class):
         y = self.geometry().y()
         self.monit_class.setGeometry(x,y,self.monit_class.width(),self.monit_class.height())
     """
+
     # TODO : 모니터 스레드 화면 업데이트
     @pyqtSlot(QPixmap)
     def update_monit_label(self, pixmap):
         self.monit_thread.monit_class.monit_label.setPixmap(pixmap)
 
     # TODO : rtsp 우클릭 이벤트 함수
-    def rtspClickSetChannel(self,event,param):
+    def rtspClickSetChannel(self, event, param):
         if event.button() == Qt.RightButton:
             try:
                 if param == 'rtsp1':
@@ -1652,7 +1778,7 @@ class WindowClass(QMainWindow, form_class):
                 print(f"click get channel Error :: {e}")
 
     # TODO : ch 더블클릭 삭제 이벤트 함수
-    def chDbClickStop(self,event,param):
+    def chDbClickStop(self, event, param):
         try:
             if param == 'ch1':
                 self.stop_ch('ch1')
@@ -1676,12 +1802,13 @@ class WindowClass(QMainWindow, form_class):
                 self.stop_ch('ch10')
         except Exception as e:
             print(e)
+
     # TODO : ABS Setting
-    def setIsABS(self,name,onABS):
+    def setIsABS(self, name, onABS):
         self.isABS[name] = onABS
 
     # TODO : RTSP 서버 갯수 정하기
-    def setRTSP_Number(self,rtsp_number):
+    def setRTSP_Number(self, rtsp_number):
         if rtsp_number == self.rtsp_num:
             QMessageBox.about(self, "Set RTSP Number", "The set value is the same")
         else:
@@ -1694,7 +1821,7 @@ class WindowClass(QMainWindow, form_class):
                 print(e)
 
     # TODO : RTSP 주소 받기
-    def getRtsp(self,server_num):
+    def getRtsp(self, server_num):
         dialog = rtsp_dialog.RTSP_dialog(server_num)
         if server_num == 'First RTSP':
             self.server_num = server_num
@@ -1708,20 +1835,20 @@ class WindowClass(QMainWindow, form_class):
         dialog.exec_()
 
     # TODO : RTSP 주소 설정 완료
-    def setRtsp(self,address):
+    def setRtsp(self, address):
         if self.server_num == 'First RTSP':
             self.first_rtsp = address
-            #print(f"{self.server_num} :: {self.rtsp_server1}")
+            # print(f"{self.server_num} :: {self.rtsp_server1}")
         if self.server_num == 'Second RTSP':
             self.second_rtsp = address
-            #print(f"{self.server_num} :: {self.rtsp_server2}")
+            # print(f"{self.server_num} :: {self.rtsp_server2}")
         if self.server_num == 'Third RTSP':
             self.third_rtsp = address
 
     # TODO : crop 이미지 채널 설정 및 rect 설정
-    def getChannelSetting(self,rtsp_name):
-        #global ch_frame
-        #frame_mutex.lock()
+    def getChannelSetting(self, rtsp_name):
+        # global ch_frame
+        # frame_mutex.lock()
         try:
             global frame_mutex
 
@@ -1735,7 +1862,7 @@ class WindowClass(QMainWindow, form_class):
             if rtsp_name == "First RTSP":
                 if main1_frame != None:
 
-                    #dialog = set_Channel.Set_Channel_Dialog(frame=ch_frame[0].scaled(self.main_screen_width,self.main_screen_height),rtsp_name=rtsp_name)
+                    # dialog = set_Channel.Set_Channel_Dialog(frame=ch_frame[0].scaled(self.main_screen_width,self.main_screen_height),rtsp_name=rtsp_name)
                     if self.ch_rect['RTSP_1'][2] <= 1280:
                         w = self.ch_rect['RTSP_1'][2]
                         h = self.ch_rect['RTSP_1'][3]
@@ -1749,8 +1876,10 @@ class WindowClass(QMainWindow, form_class):
                     try:
                         if not selected_main1:
                             selected_main1 = True
-                            frame = self.main1.pixmap().scaled(self.crop_ch_rect['RTSP_1'][0],self.crop_ch_rect['RTSP_1'][1])
-                            dialog = set_Channel.Set_Channel_Dialog(frame=frame, rtsp_name=rtsp_name,origin_width=self.ch_rect['RTSP_1'][2])
+                            frame = self.main1.pixmap().scaled(self.crop_ch_rect['RTSP_1'][0],
+                                                               self.crop_ch_rect['RTSP_1'][1])
+                            dialog = set_Channel.Set_Channel_Dialog(frame=frame, rtsp_name=rtsp_name,
+                                                                    origin_width=self.ch_rect['RTSP_1'][2])
                             dialog.get_rectangle_signal.connect(self.setChannelRect)
                             dialog.exec_()
                             selected_main1 = False
@@ -1784,8 +1913,10 @@ class WindowClass(QMainWindow, form_class):
                     try:
                         if not selected_main2:
                             selected_main2 = True
-                            frame = self.main2.pixmap().scaled(self.crop_ch_rect['RTSP_2'][0],self.crop_ch_rect['RTSP_2'][1])
-                            dialog = set_Channel.Set_Channel_Dialog(frame=frame, rtsp_name=rtsp_name,origin_width=self.ch_rect['RTSP_2'][2])
+                            frame = self.main2.pixmap().scaled(self.crop_ch_rect['RTSP_2'][0],
+                                                               self.crop_ch_rect['RTSP_2'][1])
+                            dialog = set_Channel.Set_Channel_Dialog(frame=frame, rtsp_name=rtsp_name,
+                                                                    origin_width=self.ch_rect['RTSP_2'][2])
                             dialog.get_rectangle_signal.connect(self.setChannelRect)
                             dialog.exec_()
                             selected_main2 = False
@@ -1798,14 +1929,14 @@ class WindowClass(QMainWindow, form_class):
                             dialog.exec_()
 
                     except Exception as e:
-                         print(f"set Channel dialog Error : {e}")
+                        print(f"set Channel dialog Error : {e}")
 
                 if main2_frame == None:
-                      QMessageBox.about(self, "RTSP Connect Error", "Second RTSP Server Not Connect")
+                    QMessageBox.about(self, "RTSP Connect Error", "Second RTSP Server Not Connect")
 
             if rtsp_name == "Third RTSP":
                 if main3_frame != None:
-                    #dialog = set_Channel.Set_Channel_Dialog(frame=ch_frame[1].scaled(self.main_screen_width,self.main_screen_height),rtsp_name=rtsp_name)
+                    # dialog = set_Channel.Set_Channel_Dialog(frame=ch_frame[1].scaled(self.main_screen_width,self.main_screen_height),rtsp_name=rtsp_name)
                     if self.ch_rect['RTSP_3'][2] <= 1280:
                         w = self.ch_rect['RTSP_3'][2]
                         h = self.ch_rect['RTSP_3'][3]
@@ -1820,8 +1951,10 @@ class WindowClass(QMainWindow, form_class):
                     try:
                         if not selected_main3:
                             selected_main3 = True
-                            frame = self.main3.pixmap().scaled(self.crop_ch_rect['RTSP_3'][0],self.crop_ch_rect['RTSP_3'][1])
-                            dialog = set_Channel.Set_Channel_Dialog(frame=frame, rtsp_name=rtsp_name,origin_width=self.ch_rect['RTSP_3'][2])
+                            frame = self.main3.pixmap().scaled(self.crop_ch_rect['RTSP_3'][0],
+                                                               self.crop_ch_rect['RTSP_3'][1])
+                            dialog = set_Channel.Set_Channel_Dialog(frame=frame, rtsp_name=rtsp_name,
+                                                                    origin_width=self.ch_rect['RTSP_3'][2])
                             dialog.get_rectangle_signal.connect(self.setChannelRect)
                             dialog.exec_()
                             selected_main3 = False
@@ -1842,25 +1975,26 @@ class WindowClass(QMainWindow, form_class):
         except Exception as e:
             print(f"get channel error : {e}")
 
-        #frame_mutex.unlock()
+        # frame_mutex.unlock()
+
     # TODO : CH 셋팅에서 전달받은 값.. ch1, ch2 ... // First RTSP, Second RTSP // [left_top_x,left_top_y,width,height] // rotate
     def setChannelRect(self, ch, rtsp_name, rect_point, rotate):
-        #global ch_frame
+        # global ch_frame
         try:
 
             global main1_frame
             global main2_frame
             global main3_frame
-            #global isCrop
+            # global isCrop
             global frame_mutex
-            #isCrop = True
+            # isCrop = True
             ##########################################
-            #while True:
+            # while True:
             #    if isCrop == False:
             #        break
             crop_x, crop_y, crop_width, crop_height = rect_point
-            #width_rate = self.ch_rect['ch1'][2] / self.main_screen_width
-            #height_rate = self.ch_rect['ch1'][3] / self.main_screen_height
+            # width_rate = self.ch_rect['ch1'][2] / self.main_screen_width
+            # height_rate = self.ch_rect['ch1'][3] / self.main_screen_height
 
             if rtsp_name == 'First RTSP' and main1_frame != None:
 
@@ -1868,110 +2002,141 @@ class WindowClass(QMainWindow, form_class):
                 height_rate = self.ch_rect['RTSP_1'][3] / self.crop_ch_rect['RTSP_1'][1]
 
                 # TODO : crop 화면을 이미지로 넣기 위한 전처리
-                #frame_mutex.lock()
+                # frame_mutex.lock()
                 resize_image = main1_frame.scaled(self.main_screen_width, self.main_screen_height)
-                #frame_mutex.unlock()
-                self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate),'RTSP_1',False, rotate]
+                # frame_mutex.unlock()
+                self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),
+                                    round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_1', False,
+                                    rotate]
                 width_rate = self.main_screen_width / self.ch_rect['RTSP_1'][2]
-                #width_rate = resize_image.width() / self.ch_rect['RTSP_1'][2]
+                # width_rate = resize_image.width() / self.ch_rect['RTSP_1'][2]
                 height_rate = self.main_screen_height / self.ch_rect['RTSP_1'][3]
-                #height_rate = resize_image.height() / self.ch_rect['RTSP_1'][3]
+                # height_rate = resize_image.height() / self.ch_rect['RTSP_1'][3]
 
                 # TODO : crop 화면 이미지 처리
                 if ch == 'ch1':
-                    if self.ch_rect[ch][6] != 0 :
-                        self.ch1.setPixmap(self.get_rotate_image(ch,resize_image,width_rate,height_rate,self.sub_screen_width,self.sub_screen_height))
+                    if self.ch_rect[ch][6] != 0:
+                        self.ch1.setPixmap(
+                            self.get_rotate_image(ch, resize_image, width_rate, height_rate, self.sub_screen_width,
+                                                  self.sub_screen_height))
                     else:
                         self.ch1.setPixmap(
-                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
-                                            round(self.ch_rect[ch][2] * width_rate),
-                                            round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width, self.sub_screen_height))
+                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                              round(self.ch_rect[ch][1] * height_rate),
+                                              round(self.ch_rect[ch][2] * width_rate),
+                                              round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
+                                                                                               self.sub_screen_height))
 
 
 
                 elif ch == 'ch2':
-                    if self.ch_rect[ch][6] != 0 :
-                        self.ch2.setPixmap(self.get_rotate_image(ch,resize_image,width_rate,height_rate,self.sub_screen_width,self.sub_screen_height))
+                    if self.ch_rect[ch][6] != 0:
+                        self.ch2.setPixmap(
+                            self.get_rotate_image(ch, resize_image, width_rate, height_rate, self.sub_screen_width,
+                                                  self.sub_screen_height))
                     else:
                         self.ch2.setPixmap(
-                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                              round(self.ch_rect[ch][1] * height_rate),
                                               round(self.ch_rect[ch][2] * width_rate),
                                               round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                                self.sub_screen_height))
                 elif ch == 'ch3':
-                    if self.ch_rect[ch][6] != 0 :
-                        self.ch3.setPixmap(self.get_rotate_image(ch,resize_image,width_rate,height_rate,self.sub_screen_width,self.sub_screen_height))
+                    if self.ch_rect[ch][6] != 0:
+                        self.ch3.setPixmap(
+                            self.get_rotate_image(ch, resize_image, width_rate, height_rate, self.sub_screen_width,
+                                                  self.sub_screen_height))
                     else:
                         self.ch3.setPixmap(
-                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                              round(self.ch_rect[ch][1] * height_rate),
                                               round(self.ch_rect[ch][2] * width_rate),
                                               round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                                self.sub_screen_height))
                 elif ch == 'ch4':
-                    if self.ch_rect[ch][6] != 0 :
-                        self.ch4.setPixmap(self.get_rotate_image(ch,resize_image,width_rate,height_rate,self.sub_screen_width,self.sub_screen_height))
+                    if self.ch_rect[ch][6] != 0:
+                        self.ch4.setPixmap(
+                            self.get_rotate_image(ch, resize_image, width_rate, height_rate, self.sub_screen_width,
+                                                  self.sub_screen_height))
                     else:
                         self.ch4.setPixmap(
-                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                              round(self.ch_rect[ch][1] * height_rate),
                                               round(self.ch_rect[ch][2] * width_rate),
                                               round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                                self.sub_screen_height))
                 elif ch == 'ch5':
-                    if self.ch_rect[ch][6] != 0 :
-                        self.ch5.setPixmap(self.get_rotate_image(ch,resize_image,width_rate,height_rate,self.sub_screen_width,self.sub_screen_height))
+                    if self.ch_rect[ch][6] != 0:
+                        self.ch5.setPixmap(
+                            self.get_rotate_image(ch, resize_image, width_rate, height_rate, self.sub_screen_width,
+                                                  self.sub_screen_height))
                     else:
                         self.ch5.setPixmap(
-                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                              round(self.ch_rect[ch][1] * height_rate),
                                               round(self.ch_rect[ch][2] * width_rate),
                                               round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                                self.sub_screen_height))
                 elif ch == 'ch6':
-                    if self.ch_rect[ch][6] != 0 :
-                        self.ch6.setPixmap(self.get_rotate_image(ch,resize_image,width_rate,height_rate,self.sub_screen_width,self.sub_screen_height))
+                    if self.ch_rect[ch][6] != 0:
+                        self.ch6.setPixmap(
+                            self.get_rotate_image(ch, resize_image, width_rate, height_rate, self.sub_screen_width,
+                                                  self.sub_screen_height))
                     else:
                         self.ch6.setPixmap(
-                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                              round(self.ch_rect[ch][1] * height_rate),
                                               round(self.ch_rect[ch][2] * width_rate),
                                               round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                                self.sub_screen_height))
                 elif ch == 'ch7':
-                    if self.ch_rect[ch][6] != 0 :
-                        self.ch7.setPixmap(self.get_rotate_image(ch,resize_image,width_rate,height_rate,self.sub_screen_width,self.sub_screen_height))
+                    if self.ch_rect[ch][6] != 0:
+                        self.ch7.setPixmap(
+                            self.get_rotate_image(ch, resize_image, width_rate, height_rate, self.sub_screen_width,
+                                                  self.sub_screen_height))
                     else:
                         self.ch7.setPixmap(
-                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                              round(self.ch_rect[ch][1] * height_rate),
                                               round(self.ch_rect[ch][2] * width_rate),
                                               round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                                self.sub_screen_height))
                 elif ch == 'ch8':
-                    if self.ch_rect[ch][6] != 0 :
-                        self.ch8.setPixmap(self.get_rotate_image(ch,resize_image,width_rate,height_rate,self.sub_screen_width,self.sub_screen_height))
+                    if self.ch_rect[ch][6] != 0:
+                        self.ch8.setPixmap(
+                            self.get_rotate_image(ch, resize_image, width_rate, height_rate, self.sub_screen_width,
+                                                  self.sub_screen_height))
                     else:
                         self.ch8.setPixmap(
-                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                              round(self.ch_rect[ch][1] * height_rate),
                                               round(self.ch_rect[ch][2] * width_rate),
                                               round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                                self.sub_screen_height))
                 elif ch == 'ch9':
-                    if self.ch_rect[ch][6] != 0 :
-                        self.ch9.setPixmap(self.get_rotate_image(ch,resize_image,width_rate,height_rate,self.sub_screen_width,self.sub_screen_height))
+                    if self.ch_rect[ch][6] != 0:
+                        self.ch9.setPixmap(
+                            self.get_rotate_image(ch, resize_image, width_rate, height_rate, self.sub_screen_width,
+                                                  self.sub_screen_height))
                     else:
                         self.ch9.setPixmap(
-                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                              round(self.ch_rect[ch][1] * height_rate),
                                               round(self.ch_rect[ch][2] * width_rate),
                                               round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                                self.sub_screen_height))
                 elif ch == 'ch10':
-                    if self.ch_rect[ch][6] != 0 :
-                        self.ch10.setPixmap(self.get_rotate_image(ch,resize_image,width_rate,height_rate,self.sub_screen_width,self.sub_screen_height))
+                    if self.ch_rect[ch][6] != 0:
+                        self.ch10.setPixmap(
+                            self.get_rotate_image(ch, resize_image, width_rate, height_rate, self.sub_screen_width,
+                                                  self.sub_screen_height))
                     else:
                         self.ch10.setPixmap(
-                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                            resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                              round(self.ch_rect[ch][1] * height_rate),
                                               round(self.ch_rect[ch][2] * width_rate),
                                               round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                                self.sub_screen_height))
-
-
 
             if rtsp_name == 'Second RTSP' and main2_frame != None:
 
@@ -1980,71 +2145,83 @@ class WindowClass(QMainWindow, form_class):
 
                 # TODO : crop 화면을 이미지로 넣기 위한 전처리
                 resize_image = main2_frame.scaled(self.main_screen_width, self.main_screen_height)
-                self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_2',False, rotate]
+                self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),
+                                    round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_2', False,
+                                    rotate]
                 width_rate = self.main_screen_width / self.ch_rect['RTSP_2'][2]
                 height_rate = self.main_screen_height / self.ch_rect['RTSP_2'][3]
 
                 # TODO : crop 화면 이미지 처리
                 if ch == 'ch1':
                     self.ch1.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
-                                        round(self.ch_rect[ch][2] * width_rate),
-                                        round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,                                                        self.sub_screen_height))
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
+                                          round(self.ch_rect[ch][2] * width_rate),
+                                          round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
+                                                                                           self.sub_screen_height))
                 elif ch == 'ch2':
                     self.ch2.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch3':
                     self.ch3.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch4':
                     self.ch4.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch5':
                     self.ch5.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch6':
                     self.ch6.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch7':
                     self.ch7.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch8':
                     self.ch8.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch9':
                     self.ch9.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch10':
                     self.ch10.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
-
 
             if rtsp_name == 'Third RTSP' and main3_frame != None:
 
@@ -2053,71 +2230,83 @@ class WindowClass(QMainWindow, form_class):
 
                 # TODO : crop 화면을 이미지로 넣기 위한 전처리
                 resize_image = main3_frame.scaled(self.main_screen_width, self.main_screen_height)
-                self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_3',False, rotate]
+                self.ch_rect[ch] = [round(crop_x * width_rate), round(crop_y * height_rate),
+                                    round(crop_width * width_rate), round(crop_height * height_rate), 'RTSP_3', False,
+                                    rotate]
                 width_rate = self.main_screen_width / self.ch_rect['RTSP_3'][2]
                 height_rate = self.main_screen_height / self.ch_rect['RTSP_3'][3]
 
                 # TODO : crop 화면 이미지 처리
                 if ch == 'ch1':
                     self.ch1.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
-                                        round(self.ch_rect[ch][2] * width_rate),
-                                        round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,self.sub_screen_height))
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
+                                          round(self.ch_rect[ch][2] * width_rate),
+                                          round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
+                                                                                           self.sub_screen_height))
                 elif ch == 'ch2':
                     self.ch2.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch3':
                     self.ch3.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch4':
                     self.ch4.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch5':
                     self.ch5.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch6':
                     self.ch6.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch7':
                     self.ch7.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch8':
                     self.ch8.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch9':
                     self.ch9.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
                 elif ch == 'ch10':
                     self.ch10.setPixmap(
-                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate), round(self.ch_rect[ch][1] * height_rate),
+                        resize_image.copy(round(self.ch_rect[ch][0] * width_rate),
+                                          round(self.ch_rect[ch][1] * height_rate),
                                           round(self.ch_rect[ch][2] * width_rate),
                                           round(self.ch_rect[ch][3] * height_rate)).scaled(self.sub_screen_width,
                                                                                            self.sub_screen_height))
-
 
             # TODO : config 저장 ( ch )
             Config.config['PIP'][ch] = json.dumps(self.ch_rect[ch])
@@ -2170,8 +2359,6 @@ class WindowClass(QMainWindow, form_class):
             print(f"update_channel_pixmap function error :: {e}")
     """
 
-
-
     def closeEvent(self, event):
         message = QMessageBox.question(self, "OnePersonBroadcast", "Are you sure you want to quit?")
         if message == QMessageBox.Yes:
@@ -2191,24 +2378,24 @@ class WindowClass(QMainWindow, form_class):
                     self.crop_update_thread[ch].stop()
                     self.crop_update_thread[ch].wait()
             """
-            #self.monit_class.close()
+            # self.monit_class.close()
             if self.monit_thread != None:
                 self.monit_thread.stop()
 
             self.abs_request_thread.stop()
             time.sleep(0.5)
-            #global ch_frame
+            # global ch_frame
             global main1_frame
             global main2_frame
             global main3_frame
-            #global isClose
-            #for index in range(0, len(ch_frame)):
+            # global isClose
+            # for index in range(0, len(ch_frame)):
             #    ch_frame[index] = None
             main1_frame = None
             main2_frame = None
             main3_frame = None
-            #isClose = True
-            #cv2.destroyAllWindows()
+            # isClose = True
+            # cv2.destroyAllWindows()
             with open(Config.config_path, 'w', encoding='utf-8') as configfile:
                 Config.config.write(configfile)
             event.accept()
@@ -2216,13 +2403,12 @@ class WindowClass(QMainWindow, form_class):
         else:
             event.ignore()
 
-
     def keyPressEvent(self, event):
-        #global ch_frame
+        # global ch_frame
         global main1_frame
         global main2_frame
         global main3_frame
-        #global opencv_key
+        # global opencv_key
 
         if event.key() == Qt.Key_Q:
             self.close()
@@ -2255,8 +2441,8 @@ class WindowClass(QMainWindow, form_class):
 
         # TODO : OBS ( 화면출력 ) 변경시 Monit Thread에 데이터 전달
         def handle_channel_key(channel, channel_rect, isABS, selected_ch):
-            #global isClose
-            #while channel_rect != None:
+            # global isClose
+            # while channel_rect != None:
             global selected_main1
             global selected_main2
             global selected_main3
@@ -2284,9 +2470,10 @@ class WindowClass(QMainWindow, form_class):
                         selected_main1 = True
                         selected_main2 = False
                         selected_main3 = False
-                        self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_1',isABS=isABS,selected_ch=selected_ch,isFirst=self.isFirstMonit)
+                        self.monit_thread.change_channel_rect(channel_rect=channel_rect, ch='RTSP_1', isABS=isABS,
+                                                              selected_ch=selected_ch, isFirst=self.isFirstMonit)
 
-                        #self.monit_class.monit_label.setPixmap(ch_frame[0].copy(channel_rect[0],channel_rect[1],channel_rect[2],channel_rect[3]).scaled(1280,720))
+                        # self.monit_class.monit_label.setPixmap(ch_frame[0].copy(channel_rect[0],channel_rect[1],channel_rect[2],channel_rect[3]).scaled(1280,720))
 
                     if channel_rect[4] == 'RTSP_2' and main2_frame != None:
                         self.isFirstMonit = False
@@ -2306,8 +2493,8 @@ class WindowClass(QMainWindow, form_class):
                         selected_main1 = False
                         selected_main2 = True
                         selected_main3 = False
-                        self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_2',isABS=isABS,selected_ch=selected_ch,isFirst=self.isFirstMonit)
-
+                        self.monit_thread.change_channel_rect(channel_rect=channel_rect, ch='RTSP_2', isABS=isABS,
+                                                              selected_ch=selected_ch, isFirst=self.isFirstMonit)
 
                     if channel_rect[4] == 'RTSP_3' and main3_frame != None:
                         self.isFirstMonit = False
@@ -2327,7 +2514,8 @@ class WindowClass(QMainWindow, form_class):
                         selected_main1 = False
                         selected_main2 = False
                         selected_main3 = True
-                        self.monit_thread.change_channel_rect(channel_rect=channel_rect,ch='RTSP_3',isABS=isABS,selected_ch=selected_ch,isFirst=self.isFirstMonit)
+                        self.monit_thread.change_channel_rect(channel_rect=channel_rect, ch='RTSP_3', isABS=isABS,
+                                                              selected_ch=selected_ch, isFirst=self.isFirstMonit)
 
 
                 except Exception as e:
@@ -2335,67 +2523,99 @@ class WindowClass(QMainWindow, form_class):
 
         if self.rtsp_num == 2:
             key_map = {
-                Qt.Key.Key_Insert: (self.main1, self.ch_rect['RTSP_1'],self.isABS['RTSP_1'], 'RTSP_1'),
-                Qt.Key.Key_Home: (self.main2, self.ch_rect['RTSP_2'],self.isABS['RTSP_2'], 'RTSP_2'),
-                Qt.Key.Key_1: (self.ch1, self.ch_rect['ch1'],self.isABS['ch1'], "ch1"),
-                Qt.Key.Key_2: (self.ch2, self.ch_rect['ch2'],self.isABS['ch2'], "ch2"),
-                Qt.Key.Key_3: (self.ch3, self.ch_rect['ch3'],self.isABS['ch3'], "ch3"),
-                Qt.Key.Key_4: (self.ch4, self.ch_rect['ch4'],self.isABS['ch4'], "ch4"),
-                Qt.Key.Key_5: (self.ch5, self.ch_rect['ch5'],self.isABS['ch5'], "ch5"),
-                Qt.Key.Key_6: (self.ch6, self.ch_rect['ch6'],self.isABS['ch6'], "ch6"),
-                Qt.Key.Key_7: (self.ch7, self.ch_rect['ch7'],self.isABS['ch7'], "ch7"),
-                Qt.Key.Key_8: (self.ch8, self.ch_rect['ch8'],self.isABS['ch8'], "ch8"),
-                Qt.Key.Key_9: (self.ch9, self.ch_rect['ch9'],self.isABS['ch9'], "ch9"),
-                Qt.Key.Key_0: (self.ch10, self.ch_rect['ch10'],self.isABS['ch10'], "ch10"),
+                Qt.Key.Key_Insert: (self.main1, self.ch_rect['RTSP_1'], self.isABS['RTSP_1'], 'RTSP_1'),
+                Qt.Key.Key_Home: (self.main2, self.ch_rect['RTSP_2'], self.isABS['RTSP_2'], 'RTSP_2'),
+                Qt.Key.Key_1: (self.ch1, self.ch_rect['ch1'], self.isABS['ch1'], "ch1"),
+                Qt.Key.Key_2: (self.ch2, self.ch_rect['ch2'], self.isABS['ch2'], "ch2"),
+                Qt.Key.Key_3: (self.ch3, self.ch_rect['ch3'], self.isABS['ch3'], "ch3"),
+                Qt.Key.Key_4: (self.ch4, self.ch_rect['ch4'], self.isABS['ch4'], "ch4"),
+                Qt.Key.Key_5: (self.ch5, self.ch_rect['ch5'], self.isABS['ch5'], "ch5"),
+                Qt.Key.Key_6: (self.ch6, self.ch_rect['ch6'], self.isABS['ch6'], "ch6"),
+                Qt.Key.Key_7: (self.ch7, self.ch_rect['ch7'], self.isABS['ch7'], "ch7"),
+                Qt.Key.Key_8: (self.ch8, self.ch_rect['ch8'], self.isABS['ch8'], "ch8"),
+                Qt.Key.Key_9: (self.ch9, self.ch_rect['ch9'], self.isABS['ch9'], "ch9"),
+                Qt.Key.Key_0: (self.ch10, self.ch_rect['ch10'], self.isABS['ch10'], "ch10"),
             }
         if self.rtsp_num == 3:
             key_map = {
-                Qt.Key.Key_Insert: (self.main1, self.ch_rect['RTSP_1'],self.isABS['RTSP_1'], "RTSP_1"),
-                Qt.Key.Key_Home: (self.main2, self.ch_rect['RTSP_2'],self.isABS['RTSP_2'], "RTSP_2"),
-                Qt.Key.Key_PageUp: (self.main3, self.ch_rect['RTSP_3'],self.isABS['RTSP_3'], "RTSP_3"),
-                Qt.Key.Key_1: (self.ch1, self.ch_rect['ch1'],self.isABS['ch1'], "ch1"),
-                Qt.Key.Key_2: (self.ch2, self.ch_rect['ch2'],self.isABS['ch2'], "ch2"),
-                Qt.Key.Key_3: (self.ch3, self.ch_rect['ch3'],self.isABS['ch3'], "ch3"),
-                Qt.Key.Key_4: (self.ch4, self.ch_rect['ch4'],self.isABS['ch4'], "ch4"),
-                Qt.Key.Key_5: (self.ch5, self.ch_rect['ch5'],self.isABS['ch5'], "ch5"),
-                Qt.Key.Key_6: (self.ch6, self.ch_rect['ch6'],self.isABS['ch6'], "ch6"),
-                Qt.Key.Key_7: (self.ch7, self.ch_rect['ch7'],self.isABS['ch7'], "ch7"),
-                Qt.Key.Key_8: (self.ch8, self.ch_rect['ch8'],self.isABS['ch8'], "ch8"),
-                Qt.Key.Key_9: (self.ch9, self.ch_rect['ch9'],self.isABS['ch9'], "ch9"),
-                Qt.Key.Key_0: (self.ch10, self.ch_rect['ch10'],self.isABS['ch10'], "ch10"),
+                Qt.Key.Key_Insert: (self.main1, self.ch_rect['RTSP_1'], self.isABS['RTSP_1'], "RTSP_1"),
+                Qt.Key.Key_Home: (self.main2, self.ch_rect['RTSP_2'], self.isABS['RTSP_2'], "RTSP_2"),
+                Qt.Key.Key_PageUp: (self.main3, self.ch_rect['RTSP_3'], self.isABS['RTSP_3'], "RTSP_3"),
+                Qt.Key.Key_1: (self.ch1, self.ch_rect['ch1'], self.isABS['ch1'], "ch1"),
+                Qt.Key.Key_2: (self.ch2, self.ch_rect['ch2'], self.isABS['ch2'], "ch2"),
+                Qt.Key.Key_3: (self.ch3, self.ch_rect['ch3'], self.isABS['ch3'], "ch3"),
+                Qt.Key.Key_4: (self.ch4, self.ch_rect['ch4'], self.isABS['ch4'], "ch4"),
+                Qt.Key.Key_5: (self.ch5, self.ch_rect['ch5'], self.isABS['ch5'], "ch5"),
+                Qt.Key.Key_6: (self.ch6, self.ch_rect['ch6'], self.isABS['ch6'], "ch6"),
+                Qt.Key.Key_7: (self.ch7, self.ch_rect['ch7'], self.isABS['ch7'], "ch7"),
+                Qt.Key.Key_8: (self.ch8, self.ch_rect['ch8'], self.isABS['ch8'], "ch8"),
+                Qt.Key.Key_9: (self.ch9, self.ch_rect['ch9'], self.isABS['ch9'], "ch9"),
+                Qt.Key.Key_0: (self.ch10, self.ch_rect['ch10'], self.isABS['ch10'], "ch10"),
             }
-
 
         if event.key() in key_map:
             channel, channel_rect, isABS, selected_ch = key_map[event.key()]
             handle_channel_key(channel, channel_rect, isABS, selected_ch)
+    # TODO : rtsp 연결 timeout Thread
+    def rtsp_timeout(self,rtsp_server):
+        for i in range(0, 5):
+            time.sleep(1)
+            if i == 4:
+                if rtsp_server == 1:
+                    if self.rtsp_worker1.cap == False:
+                        QTimer.singleShot(0, self.rtsp_message)
+                        self.rtsp_worker1.terminate()
+                        self.rtsp_worker1 = None
 
+                if rtsp_server == 2:
+                    if self.rtsp_worker2.cap == False:
+                        QTimer.singleShot(0, self.rtsp_message)
+                        self.rtsp_worker2.terminate()
+                        self.rtsp_worker2 = None
+                if rtsp_server == 3:
+                    if self.rtsp_worker3.cap == False:
+                        QTimer.singleShot(0, self.rtsp_message)
+                        self.rtsp_worker3.terminate()
+                        self.rtsp_worker3 = None
+                if rtsp_server == 1:
+                    self.rtsp1_timeout = None
+                elif rtsp_server == 2:
+                    self.rtsp2_timeout = None
+                elif rtsp_server == 3:
+                    self.rtsp3_timeout = None
+
+    def rtsp_message(self):
+        QMessageBox.about(self,'RTSP Connect Error','RTSP connect timeout')
     # TODO : 첫번째 rtsp 서버 실행 함수
     def run_first_rtsp(self):
         try:
             if self.first_rtsp != None:
-                if self.rtsp_worker1 != None:
+                if self.rtsp_worker1 != None and self.rtsp1_timeout == None:
                     self.rtsp_worker1.stop()
-                self.rtsp_worker1 = rtsp_worker(parent=self, url=self.first_rtsp,name="first")
+                if self.rtsp1_timeout == None:
+                    self.rtsp_worker1 = rtsp_worker(parent=self, url=self.first_rtsp, name="first")
+                    self.rtsp_worker1.start()
+                    self.rtsp1_timeout = threading.Thread(target=self.rtsp_timeout,kwargs={'rtsp_server':1})
+                    self.rtsp1_timeout.start()
 
-                self.rtsp_worker1.start()
         except Exception as e:
             print(f"run_rtsp_first Error :: {e}")
             if self.rtsp_worker1 != None:
                 self.rtsp_worker1.stop()
                 self.rtsp_worker1 = None
 
-
     # TODO : 두번째 rtsp 서버 실행 함수
     def run_second_rtsp(self):
         try:
-            if self.second_rtsp != None:
+            if self.second_rtsp != None and self.rtsp2_timeout == None:
                 if self.rtsp_worker2 != None:
                     self.rtsp_worker2.stop()
+                if self.rtsp2_timeout == None:
+                    self.rtsp_worker2 = rtsp_worker(parent=self, url=self.second_rtsp, name="second")
+                    self.rtsp_worker2.start()
+                    self.rtsp2_timeout = threading.Thread(target=self.rtsp_timeout, kwargs={'rtsp_server': 2})
+                    self.rtsp2_timeout.start()
 
-                self.rtsp_worker2 = rtsp_worker(parent=self, url=self.second_rtsp,name="second")
-
-                self.rtsp_worker2.start()
         except Exception as e:
             print(f"run_rtsp_second Error :: {e}")
             if self.rtsp_worker2 != None:
@@ -2405,12 +2625,15 @@ class WindowClass(QMainWindow, form_class):
     # TODO : 세번째 rtsp 서버 실행 함수
     def run_third_rtsp(self):
         try:
-            if self.third_rtsp != None:
-                if self.rtsp_worker3 != None:
+            if self.third_rtsp != None :
+                if self.rtsp_worker3 != None and self.rtsp3_timeout == None:
                     self.rtsp_worker3.stop()
-                self.rtsp_worker3 = rtsp_worker(parent=self, url=self.third_rtsp, name="third")
+                if self.rtsp3_timeout == None:
+                    self.rtsp_worker3 = rtsp_worker(parent=self, url=self.third_rtsp, name="third")
+                    self.rtsp_worker3.start()
+                    self.rtsp3_timeout = threading.Thread(target=self.rtsp_timeout, kwargs={'rtsp_server': 3})
+                    self.rtsp3_timeout.start()
 
-                self.rtsp_worker3.start()
         except Exception as e:
             print(f"run_rtsp_second Error :: {e}")
             if self.rtsp_worker3 != None:
@@ -2418,7 +2641,7 @@ class WindowClass(QMainWindow, form_class):
                 self.rtsp_worker3 = None
 
     # TODO : RTSP 서버 종료 함수
-    def stop_rtsp(self,name):
+    def stop_rtsp(self, name):
         if name == 'first':
             if self.rtsp_worker1 != None:
                 self.rtsp_worker1.stop()
@@ -2437,8 +2660,8 @@ class WindowClass(QMainWindow, form_class):
                 self.rtsp_worker3.wait()
                 self.rtsp_worker3 = None
 
-    #TODO : PIP 채널 영상 종료
-    def stop_ch(self,ch):
+    # TODO : PIP 채널 영상 종료
+    def stop_ch(self, ch):
         self.ch_rect[ch] = None
         if ch == 'ch1':
             self.ch1.setPixmap(self.sub_noSignalImage)
@@ -2481,7 +2704,7 @@ class WindowClass(QMainWindow, form_class):
         polygon = QPolygon([top_left, top_right, bottom_right, bottom_left])
 
         region = QRegion(polygon)
-        
+
         # 필요한 부분만 crop하기 위해 boundingRect 사용
         cropped_rect = region.boundingRect()
         cropped_pixmap = resize_image.copy(cropped_rect)
@@ -2505,7 +2728,7 @@ class WindowClass(QMainWindow, form_class):
 
         # 회전된 이미지의 크기 설정
         rotated_pixmap = QPixmap(rotate_width, rotate_height)
-        #rotated_pixmap.fill(Qt.transparent)  # 투명 배경으로 초기화
+        # rotated_pixmap.fill(Qt.transparent)  # 투명 배경으로 초기화
 
         # 중심 좌표 계산
         center_x = round(rotate_width / 2)
@@ -2516,7 +2739,6 @@ class WindowClass(QMainWindow, form_class):
         transform.translate(center_x, center_y)  # 중심으로 이동
         transform.rotate(-self.ch_rect[ch][6])  # 원래의 대각선 각도로 회전 (예: -45도)
         transform.translate(-center_x, -center_y)  # 다시 원래 위치로 이동
-
 
         # QPainter를 사용하여 회전된 이미지 그리기
         painter = QPainter(rotated_pixmap)
