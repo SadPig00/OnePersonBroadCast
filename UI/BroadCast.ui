@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>991</width>
-    <height>811</height>
+    <width>1280</width>
+    <height>760</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -687,7 +687,7 @@ border : 2px solid rgb(190, 190, 190);</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>991</width>
+     <width>1280</width>
      <height>21</height>
     </rect>
    </property>

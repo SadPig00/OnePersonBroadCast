@@ -1086,7 +1086,7 @@ class MonitThread(QThread):
             stream_key = Config.config['STREAMING']['stream_key']
             width, height = int(Config.config['PROGRAM']['width']), int(Config.config['PROGRAM']['height'])  # 해상도 설정
             fps = int(Config.config['STREAMING']['fps'])  # 프레임 속도 설정
-            self.ffmpeg_process = self.stream_to_youtube(stream_key, width, height, fps)
+            #self.ffmpeg_process = self.stream_to_youtube(stream_key, width, height, fps)
 
 
             while self.working:
@@ -1368,6 +1368,7 @@ class MonitThread(QThread):
 
     def stop(self):
         self.working = False
+        self.ffmpeg_process.terminate()
         self.monit_class.close()
         self.quit()
         self.wait(2000)
@@ -1406,7 +1407,6 @@ class MonitClass(QWidget, monit_class):
         self.setWindowOpacity(0.9999)
         self.show()
 
-
 # TODO : main 화면 Class
 class WindowClass(QMainWindow, form_class):
     def __init__(self):
@@ -1415,17 +1415,48 @@ class WindowClass(QMainWindow, form_class):
         global config_height
 
         super().__init__()
-        self.window_width = tkinter.Tk().winfo_screenwidth()
-        self.window_height = tkinter.Tk().winfo_screenheight()
+        #self.window_width = tkinter.Tk().winfo_screenwidth()
+        #self.window_height = tkinter.Tk().winfo_screenheight()
         self.setupUi(self)
 
+        self.window_width = self.width()
+        self.window_height = self.height()
+
         # self.resize(round(self.window_width*0.8), round(self.window_height*0.8))
-        self.resize(round(self.window_width * 0.6), round(self.window_height * 0.6))
+        #self.resize(round(self.window_width * 0.6), round(self.window_height * 0.6))
         self.rtsp_num = int(Config.config['RTSP']['rtsp_num'])
         # TODO : selected color :: rgb(253, 8, 8) // no selected color :: rgb(190, 190, 190);
         self.selected_color = "border : 2px solid rgb(253,8,8)"
         self.no_selected_color = "border : 2px solid rgb(190, 190, 190)"
-        self.dialog = None
+
+        # TODO : 메뉴바 스타일시트
+        self.menuBar.setStyleSheet("""
+                    QMenuBar {
+                        background-color: #565656; /* 배경색 */
+                        color: white; /* 텍스트 색상 */
+                    }
+
+                    QMenuBar::item {
+                        background-color: transparent;
+                    }
+
+                    QMenuBar::item:selected { /* 마우스 오버 시 아이템 색상 */
+                        background-color: #565656;
+                    }
+
+                    QMenuBar::item:pressed {
+                        background-color: rgb(55, 130, 221);
+                    }
+
+                    QMenu {
+                        background-color: #565656; /* 드롭다운 메뉴의 배경색 */
+                        color: white; /* 드롭다운 메뉴의 텍스트 색상 */
+                    }
+
+                    QMenu::item:selected { /* 드롭다운 메뉴의 아이템 마우스 오버 시 */
+                        background-color: rgb(55, 130, 221);
+                    }
+                """)
 
         # TODO : 영상 화면 비율 16:9
         self.rate = 16 / 9
@@ -1758,6 +1789,40 @@ class WindowClass(QMainWindow, form_class):
         y = self.geometry().y()
         self.monit_class.setGeometry(x,y,self.monit_class.width(),self.monit_class.height())
     """
+    # TODO : 메인 화면 resize 이벤트
+    def resizeEvent(self, event):
+        #self.main_noSignalImage
+        #self.sub_noSignalImage
+        self.window_width = event.size().width()
+        self.sub_screen_width = round(self.window_width / 5.4)
+        self.sub_screen_height = round(self.sub_screen_width / self.rate)
+
+
+        self.ch1.setPixmap(self.ch1.pixmap().scaled(self.sub_screen_width,self.sub_screen_height))
+        self.ch2.setPixmap(self.ch2.pixmap().scaled(self.sub_screen_width,self.sub_screen_height))
+        self.ch3.setPixmap(self.ch3.pixmap().scaled(self.sub_screen_width,self.sub_screen_height))
+        self.ch4.setPixmap(self.ch4.pixmap().scaled(self.sub_screen_width,self.sub_screen_height))
+        self.ch5.setPixmap(self.ch5.pixmap().scaled(self.sub_screen_width,self.sub_screen_height))
+        self.ch6.setPixmap(self.ch6.pixmap().scaled(self.sub_screen_width,self.sub_screen_height))
+        self.ch7.setPixmap(self.ch7.pixmap().scaled(self.sub_screen_width,self.sub_screen_height))
+        self.ch8.setPixmap(self.ch8.pixmap().scaled(self.sub_screen_width,self.sub_screen_height))
+        self.ch9.setPixmap(self.ch9.pixmap().scaled(self.sub_screen_width,self.sub_screen_height))
+        self.ch10.setPixmap(self.ch10.pixmap().scaled(self.sub_screen_width,self.sub_screen_height))
+
+        if self.rtsp_num == 2:
+            self.main_screen_width = round(self.window_width / 2.15)
+            self.main_screen_height = round(self.main_screen_width / self.rate)
+
+            self.main1.setPixmap(self.main1.pixmap().scaled(self.main_screen_width, self.main_screen_height))
+            self.main2.setPixmap(self.main2.pixmap().scaled(self.main_screen_width, self.main_screen_height))
+
+        if self.rtsp_num == 3:
+            self.main_screen_width = round(self.window_width / 3)
+            self.main_screen_height = round(self.main_screen_width / self.rate)
+
+            self.main1.setPixmap(self.main1.pixmap().scaled(self.main_screen_width, self.main_screen_height))
+            self.main2.setPixmap(self.main2.pixmap().scaled(self.main_screen_width, self.main_screen_height))
+            self.main3.setPixmap(self.main3.pixmap().scaled(self.main_screen_width, self.main_screen_height))
 
     # TODO : 모니터 스레드 화면 업데이트
     @pyqtSlot(QPixmap)
@@ -2414,7 +2479,8 @@ class WindowClass(QMainWindow, form_class):
             self.close()
 
         if event.key() == Qt.Key_F11:
-            if self.height() != self.window_height:
+            #if self.height() != self.window_height:
+            if self.height() != tkinter.Tk().winfo_screenheight():
                 self.showFullScreen()
             else:
                 self.showMaximized()
@@ -2761,7 +2827,8 @@ if __name__ == "__main__":
     try:
         app = QApplication(sys.argv)
         myWindow = WindowClass()
-        myWindow.showMaximized()
+        #myWindow.showMaximized()
+        myWindow.show()
         sys.exit(app.exec_())
     except Exception as e:
         print(e)
